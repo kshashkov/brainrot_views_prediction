@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Viral Score Predictor - MVP</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #208088;
+      --primary-light: #32b8c6;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --bg-light: #f8f9fa;
+      --bg-dark: #1f2937;
+      --text-dark: #1f2937;
+      --text-light: #6b7280;
+      --border: #e5e7eb;
+      --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg-light);
+      color: var(--text-dark);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      color: var(--text-light);
+      font-size: 1.1rem;
+    }
+
+    .main-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 768px) {
+      .main-content {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Upload Section */
+    .upload-section {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: var(--shadow);
+    }
+
+    .upload-box {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .upload-box:hover {
+      border-color: var(--primary);
+      background: rgba(32, 128, 136, 0.02);
+    }
+
+    .upload-box.dragover {
+      border-color: var(--primary);
+      background: rgba(32, 128, 136, 0.08);
+    }
+
+    .upload-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+
+    .upload-text {
+      margin-bottom: 1rem;
+    }
+
+    .upload-text p:first-child {
+      font-weight: 600;
+      color: var(--text-dark);
+    }
+
+    .upload-text p:last-child {
+      font-size: 0.9rem;
+      color: var(--text-light);
+    }
+
+    #videoInput {
+      display: none;
+    }
+
+    .limits {
+      background: #fef3c7;
+      border-left: 4px solid var(--warning);
+      padding: 1rem;
+      border-radius: 4px;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+    }
+
+    .limits-title {
+      font-weight: 600;
+      color: #92400e;
+      margin-bottom: 0.5rem;
+    }
+
+    .limits-list {
+      list-style: none;
+      color: #b45309;
+    }
+
+    .limits-list li {
+      padding: 0.25rem 0;
+    }
+
+    .limits-list li:before {
+      content: "ⓘ ";
+      margin-right: 0.5rem;
+      font-weight: bold;
+    }
+
+    .video-preview {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: var(--bg-light);
+      border-radius: 8px;
+      display: none;
+    }
+
+    .video-preview.show {
+      display: block;
+    }
+
+    .preview-item {
+      display: flex;
+      justify-content: space-between;
+      margin: 0.5rem 0;
+      font-size: 0.95rem;
+    }
+
+    .preview-label {
+      font-weight: 500;
+      color: var(--text-light);
+    }
+
+    .preview-value {
+      color: var(--text-dark);
+    }
+
+    /* Form Section */
+    .form-section {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: var(--shadow);
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+      color: var(--text-dark);
+    }
+
+    input[type="text"],
+    input[type="number"],
+    textarea {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 1rem;
+      transition: border-color 0.3s ease;
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(32, 128, 136, 0.1);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .char-count {
+      font-size: 0.8rem;
+      color: var(--text-light);
+      margin-top: 0.25rem;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    button {
+      flex: 1;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(32, 128, 136, 0.3);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-secondary {
+      background: var(--bg-light);
+      color: var(--text-dark);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--border);
+    }
+
+    /* Result Section */
+    .result-section {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: var(--shadow);
+      display: none;
+      text-align: center;
+    }
+
+    .result-section.show {
+      display: block;
+      animation: slideIn 0.4s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .score-display {
+      position: relative;
+      width: 200px;
+      height: 200px;
+      margin: 2rem auto;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      font-weight: 700;
+      color: white;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    }
+
+    .score-display.low {
+      background: linear-gradient(135deg, #ef4444, #f87171);
+    }
+
+    .score-display.medium {
+      background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    }
+
+    .score-display.high {
+      background: linear-gradient(135deg, #22c55e, #4ade80);
+    }
+
+    .score-label {
+      color: var(--text-dark);
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin-top: 1.5rem;
+    }
+
+    /* Status Messages */
+    .status {
+      padding: 1rem;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      display: none;
+    }
+
+    .status.show {
+      display: block;
+    }
+
+    .status.loading {
+      background: #dbeafe;
+      color: var(--primary);
+      border-left: 4px solid var(--primary);
+    }
+
+    .status.error {
+      background: #fee2e2;
+      color: var(--error);
+      border-left: 4px solid var(--error);
+    }
+
+    .status.success {
+      background: #dcfce7;
+      color: var(--success);
+      border-left: 4px solid var(--success);
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid currentColor;
+      border-right-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 0.5rem;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      color: var(--text-light);
+      font-size: 0.9rem;
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .demo-badge {
+      display: inline-block;
+      background: var(--warning);
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-left: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Viral Score Predictor <span class="demo-badge">PROTOTYPE</span></h1>
+      <p class="subtitle">Discover how likely your video is to go viral</p>
+    </header>
+
+    <div class="status" id="status"></div>
+
+    <div class="main-content">
+      <!-- Upload Section -->
+      <div class="upload-section">
+        <div class="upload-box" id="uploadBox">
+          <div class="upload-icon">📹</div>
+          <div class="upload-text">
+            <p>Drag and drop your video here</p>
+            <p>or click to browse</p>
+          </div>
+          <input type="file" id="videoInput" accept="video/*" />
+        </div>
+
+        <div class="limits">
+          <div class="limits-title">Video Requirements</div>
+          <ul class="limits-list">
+            <li>Maximum duration: 15 seconds</li>
+            <li>Maximum file size: 50 MB</li>
+            <li>Formats: MP4, WebM, Ogg</li>
+          </ul>
+        </div>
+
+        <div class="video-preview" id="videoPreview">
+          <div class="preview-item">
+            <span class="preview-label">Filename:</span>
+            <span class="preview-value" id="previewName"></span>
+          </div>
+          <div class="preview-item">
+            <span class="preview-label">Size:</span>
+            <span class="preview-value" id="previewSize"></span>
+          </div>
+          <div class="preview-item">
+            <span class="preview-label">Duration:</span>
+            <span class="preview-value" id="previewDuration"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Form Section -->
+      <div class="form-section">
+        <form id="uploadForm">
+          <div class="form-group">
+            <label for="title">Video Title</label>
+            <input type="text" id="title" placeholder="e.g., Amazing dance challenge" />
+            <div class="char-count" id="titleCount">0/100 characters</div>
+          </div>
+
+          <div class="form-group">
+            <label for="hashtags">Hashtags</label>
+            <input
+              type="text"
+              id="hashtags"
+              placeholder="e.g., #dance #challenge #trending"
+            />
+            <div class="char-count" id="hashtagCount">Space-separated</div>
+          </div>
+
+          <div class="form-group">
+            <label for="description">Description</label>
+            <textarea
+              id="description"
+              placeholder="Tell us more about your video..."
+            ></textarea>
+            <div class="char-count" id="descCount">0/500 characters</div>
+          </div>
+
+          <div class="form-group">
+            <label for="followers">Your Followers</label>
+            <input
+              type="number"
+              id="followers"
+              placeholder="0"
+              min="0"
+              max="100000000"
+            />
+          </div>
+
+          <div class="button-group">
+            <button type="submit" class="btn-primary" id="analyzeBtn">
+              Analyze Video
+            </button>
+            <button type="reset" class="btn-secondary">Clear</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Result Section -->
+    <div class="result-section" id="resultSection">
+      <div class="score-display" id="scoreDisplay">--</div>
+      <div class="score-label" id="scoreCategory"></div>
+    </div>
+
+    <footer>
+      <p>
+        This is a MVP denstration of Viral Score Predictor. By Konstantin Shashkov & Artem Molchanov @ GSB HSE. Moscow, 2025.
+      </p>
+    </footer>
+  </div>
+
+  <script>
+    // ============================================================
+    // Configuration
+    // ============================================================
+    const CONFIG = {
+      MAX_VIDEO_DURATION: 15, // seconds
+      MAX_FILE_SIZE: 50 * 1024 * 1024, // 50 MB
+      TITLE_MAX_CHARS: 100,
+      DESC_MAX_CHARS: 500,
+    };
+
+    const SCORE_DISTRIBUTION = generateScoreDistribution();
+
+    function generateScoreDistribution() {
+      const scores = [];
+      for (let i = 0; i < 10000; i++) {
+        const u1 = Math.random();
+        const u2 = Math.random();
+        const beta = u1 ** (1 / 2) / (u1 ** (1 / 2) + (1 - u1) ** (1 / 5));
+        scores.push(Math.round(beta * 100));
+      }
+      return scores;
+    }
+
+    function getRealisticScore() {
+      const idx = Math.floor(Math.random() * SCORE_DISTRIBUTION.length);
+      return SCORE_DISTRIBUTION[idx];
+    }
+
+    // ============================================================
+    // DOM Elements
+    // ============================================================
+    const uploadBox = document.getElementById("uploadBox");
+    const videoInput = document.getElementById("videoInput");
+    const uploadForm = document.getElementById("uploadForm");
+    const analyzeBtn = document.getElementById("analyzeBtn");
+    const status = document.getElementById("status");
+    const resultSection = document.getElementById("resultSection");
+    const scoreDisplay = document.getElementById("scoreDisplay");
+    const scoreCategory = document.getElementById("scoreCategory");
+    const videoPreview = document.getElementById("videoPreview");
+    const titleInput = document.getElementById("title");
+    const descInput = document.getElementById("description");
+
+    let selectedVideo = null;
+
+    // ============================================================
+    // Event Listeners
+    // ============================================================
+
+    // Upload box interaction
+    uploadBox.addEventListener("click", () => videoInput.click());
+
+    uploadBox.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      uploadBox.classList.add("dragover");
+    });
+
+    uploadBox.addEventListener("dragleave", () => {
+      uploadBox.classList.remove("dragover");
+    });
+
+    uploadBox.addEventListener("drop", (e) => {
+      e.preventDefault();
+      uploadBox.classList.remove("dragover");
+      if (e.dataTransfer.files.length) {
+        handleVideoSelect(e.dataTransfer.files[0]);
+      }
+    });
+
+    videoInput.addEventListener("change", (e) => {
+      if (e.target.files.length) {
+        handleVideoSelect(e.target.files[0]);
+      }
+    });
+
+    // Character counters
+    titleInput.addEventListener("input", (e) => {
+      document.getElementById("titleCount").textContent =
+        `${e.target.value.length}/${CONFIG.TITLE_MAX_CHARS} characters`;
+    });
+
+    descInput.addEventListener("input", (e) => {
+      document.getElementById("descCount").textContent =
+        `${e.target.value.length}/${CONFIG.DESC_MAX_CHARS} characters`;
+    });
+
+    // Form submission
+    uploadForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (!selectedVideo) {
+        showStatus("Please upload a video first", "error");
+        return;
+      }
+      analyzeVideo();
+    });
+
+    // ============================================================
+    // Functions
+    // ============================================================
+
+    function handleVideoSelect(file) {
+      // Validate file type
+      if (!file.type.startsWith("video/")) {
+        showStatus("Please select a valid video file", "error");
+        return;
+      }
+
+      // Validate file size
+      if (file.size > CONFIG.MAX_FILE_SIZE) {
+        showStatus(
+          `File size exceeds 50 MB limit (current: ${(file.size / 1024 / 1024).toFixed(1)} MB)`,
+          "error"
+        );
+        return;
+      }
+
+      selectedVideo = file;
+
+      // Create video element to check duration
+      const videoElement = document.createElement("video");
+      videoElement.onloadedmetadata = function () {
+        const duration = videoElement.duration;
+
+        if (duration > CONFIG.MAX_VIDEO_DURATION) {
+          showStatus(
+            `Video duration (${duration.toFixed(1)}s) exceeds 15 second limit`,
+            "error"
+          );
+          selectedVideo = null;
+          return;
+        }
+
+        // Show preview
+        showVideoPreview(file, duration);
+        showStatus("", "");
+      };
+
+      videoElement.onerror = function () {
+        showStatus("Unable to read video file. Please try another file.", "error");
+        selectedVideo = null;
+      };
+
+      videoElement.src = URL.createObjectURL(file);
+    }
+
+    function showVideoPreview(file, duration) {
+      document.getElementById("previewName").textContent = file.name;
+      document.getElementById("previewSize").textContent = formatFileSize(file.size);
+      document.getElementById("previewDuration").textContent = `${duration.toFixed(2)}s`;
+      videoPreview.classList.add("show");
+    }
+
+    function formatFileSize(bytes) {
+      if (bytes === 0) return "0 Bytes";
+      const k = 1024;
+      const sizes = ["Bytes", "KB", "MB"];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+    }
+
+    function analyzeVideo() {
+      analyzeBtn.disabled = true;
+      showStatus("Analyzing video...", "loading");
+
+      setTimeout(() => {
+        const score = getRealisticScore();
+
+        displayResult(score);
+        showStatus("", "");
+        analyzeBtn.disabled = false;
+      }, 1000 + Math.random() * 2000);
+    }
+
+    function displayResult(score) {
+      scoreDisplay.textContent = score;
+
+      if (score >= 70) {
+        scoreDisplay.className = "score-display high";
+        scoreCategory.textContent = "🚀 High Viral Potential";
+      } else if (score >= 40) {
+        scoreDisplay.className = "score-display medium";
+        scoreCategory.textContent = "📈 Medium Viral Potential";
+      } else {
+        scoreDisplay.className = "score-display low";
+        scoreCategory.textContent = "📊 Low Viral Potential";
+      }
+
+      resultSection.classList.add("show");
+      resultSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function showStatus(message, type) {
+      status.innerHTML = "";
+      if (message) {
+        status.classList.add("show", type);
+        if (type === "loading") {
+          status.innerHTML = `<span class="spinner"></span>${message}`;
+        } else {
+          status.textContent = message;
+        }
+      } else {
+        status.classList.remove("show", "loading", "error", "success");
+      }
+    }
+  </script>
+</body>
+</html>
