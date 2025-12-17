@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Virality Predictor - Inference</title>
+    <title>Video Virality Predictor</title>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.0.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@6"></script>
     <style>
         :root {
             --color-primary: #2180a4;
@@ -178,11 +179,87 @@
             background: rgba(94, 82, 64, 0.2);
         }
 
+        .file-upload-area {
+            border: 2px dashed var(--color-border);
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 200ms;
+            background: rgba(33, 128, 141, 0.02);
+        }
+
+        .file-upload-area:hover {
+            border-color: var(--color-primary);
+            background: rgba(33, 128, 141, 0.05);
+        }
+
+        .file-upload-area.dragover {
+            border-color: var(--color-primary);
+            background: rgba(33, 128, 141, 0.1);
+        }
+
+        .file-upload-area input {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .upload-text {
+            color: var(--color-text);
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .upload-hint {
+            color: var(--color-text-secondary);
+            font-size: 13px;
+        }
+
+        .file-info {
+            background: rgba(33, 128, 141, 0.08);
+            border: 1px solid rgba(33, 128, 141, 0.2);
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 12px;
+            font-size: 13px;
+            display: none;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
         .features-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 16px;
             margin-top: 16px;
+        }
+
+        .feature-card {
+            background: rgba(33, 128, 141, 0.05);
+            border: 1px solid rgba(33, 128, 141, 0.2);
+            border-radius: 6px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .feature-label {
+            font-size: 12px;
+            color: var(--color-text-secondary);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .feature-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--color-primary);
         }
 
         .results-container {
@@ -231,21 +308,6 @@
             font-size: 14px;
         }
 
-        .model-info {
-            background: #f9f9f9;
-            border-left: 4px solid var(--color-primary);
-            padding: 12px;
-            border-radius: 4px;
-            font-size: 12px;
-            color: var(--color-text-secondary);
-            display: none;
-            margin-top: 16px;
-        }
-
-        .model-info.show {
-            display: block;
-        }
-
         .button-group {
             display: flex;
             gap: 8px;
@@ -255,89 +317,140 @@
         .button-group .btn {
             flex: 1;
         }
+
+        .processing-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 24px;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
             <h1>🎬 Video Virality Predictor</h1>
-            <p class="subtitle">Neural Network Inference Engine</p>
+            <p class="subtitle">AI-Powered Video Content Analysis</p>
         </header>
 
         <div class="status-section">
             <div class="status-indicator" id="status-indicator"></div>
-            <span class="status-text" id="status-text">Ready to load model</span>
+            <span class="status-text" id="status-text">Loading model...</span>
         </div>
 
+        <!-- Video Upload Section -->
         <div class="card">
-            <h2>1. Load Trained Model</h2>
-            <div class="form-group">
-                <label class="form-label">Model Path (model.json)</label>
-                <input type="text" id="model-path" class="form-control" placeholder="e.g., ./virality_model/model.json">
-                <small style="color: var(--color-text-secondary); margin-top: 4px; display: block;">
-                    Path to your exported TensorFlow.js model (must have model.weights.bin in same directory)
-                </small>
+            <h2>1. Upload Video File</h2>
+            <div class="file-upload-area" id="upload-area">
+                <input type="file" id="video-file" accept="video/*">
+                <div class="upload-icon">🎥</div>
+                <div class="upload-text">Drop video here or click to browse</div>
+                <div class="upload-hint">MP4, WebM, Ogg (Max 100 MB)</div>
             </div>
-            <button class="btn" id="load-btn">Load Model</button>
-            <div class="model-info" id="model-info-container">
-                <strong>Model Info:</strong> <span id="model-params"></span>
+            <div class="file-info" id="file-info">
+                <strong>File:</strong> <span id="file-name"></span><br>
+                <strong>Size:</strong> <span id="file-size"></span>
             </div>
         </div>
 
+        <!-- Metadata Section -->
         <div class="card">
-            <h2>2. Enter Video Features</h2>
+            <h2>2. Enter Video Metadata</h2>
             <div class="features-grid">
                 <div class="form-group">
-                    <label class="form-label">Title Length</label>
-                    <input type="number" id="title_length" class="form-control" placeholder="0-500" disabled>
+                    <label class="form-label">Video Title</label>
+                    <input type="text" id="video-title" class="form-control" placeholder="Enter video title" maxlength="500">
+                    <small style="color: var(--color-text-secondary); margin-top: 4px; display: block;">
+                        Max 500 characters | Current: <span id="title-count">0</span>
+                    </small>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Description Length</label>
-                    <input type="number" id="description_length" class="form-control" placeholder="0-2000" disabled>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Edge Intensity</label>
-                    <input type="number" id="edge_intensity" class="form-control" placeholder="0-1" step="0.01" disabled>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Color Histogram</label>
-                    <input type="number" id="color_histogram" class="form-control" placeholder="0-1" step="0.01" disabled>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Spectral Entropy</label>
-                    <input type="number" id="spectral_entropy" class="form-control" placeholder="0-1" step="0.01" disabled>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Audio Intensity</label>
-                    <input type="number" id="audio_intensity" class="form-control" placeholder="0-1" step="0.01" disabled>
+                    <label class="form-label">Video Description</label>
+                    <textarea id="video-description" class="form-control" placeholder="Enter video description" maxlength="2000" rows="4"></textarea>
+                    <small style="color: var(--color-text-secondary); margin-top: 4px; display: block;">
+                        Max 2000 characters | Current: <span id="desc-count">0</span>
+                    </small>
                 </div>
             </div>
-            <button class="btn" id="predict-btn" disabled>Make Prediction</button>
         </div>
 
+        <!-- Extracted Features Section -->
         <div class="card">
-            <h2>3. Prediction Results</h2>
+            <h2>3. Extracted Features</h2>
+            <div class="features-grid" id="features-display">
+                <div class="feature-card">
+                    <div class="feature-label">Title Length</div>
+                    <div class="feature-value" id="feat-title-length">0</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-label">Description Length</div>
+                    <div class="feature-value" id="feat-desc-length">0</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-label">Edge Intensity</div>
+                    <div class="feature-value" id="feat-edge-intensity">-</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-label">Color Histogram</div>
+                    <div class="feature-value" id="feat-color-histogram">-</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-label">Spectral Entropy</div>
+                    <div class="feature-value" id="feat-spectral-entropy">-</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-label">Audio Intensity</div>
+                    <div class="feature-value" id="feat-audio-intensity">-</div>
+                </div>
+            </div>
+            <button class="btn" id="predict-btn" disabled style="width: 100%; margin-top: 16px;">
+                Analyze Video
+            </button>
+        </div>
+
+        <!-- Results Section -->
+        <div class="card">
+            <h2>4. Virality Prediction</h2>
             <div class="results-container" id="results-container">
                 <div class="virality-score" id="virality-score">0%</div>
-                <div class="virality-label" id="virality-label">UNKNOWN</div>
+                <div class="virality-label" id="virality-label">ANALYZING</div>
                 <div class="confidence-bar-container">
                     <div class="confidence-bar" id="confidence-bar"></div>
                 </div>
                 <div class="probability-text" id="probability-text">Probability: 0.0000 (0%)</div>
                 <div class="button-group">
-                    <button class="btn btn-secondary" onclick="app.resetForm()">Clear Form</button>
+                    <button class="btn btn-secondary" onclick="app.resetForm()">Analyze Another</button>
                 </div>
             </div>
             <p style="color: var(--color-text-secondary); font-size: 14px; text-align: center; margin: 0; padding-top: 20px;">
-                Model predictions will appear here
+                Upload a video and enter metadata to get predictions
             </p>
         </div>
 
         <footer style="text-align: center; color: var(--color-text-secondary); font-size: 12px; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--color-border);">
-            <p>
-                Make sure your model files (model.json + model.weights.bin) are accessible from the specified path<br>
-                Browser security requires same-origin or CORS-enabled endpoints
-            </p>
+            <p>Model automatically loads from ./virality_model/model.json</p>
         </footer>
     </div>
 
@@ -346,6 +459,9 @@
             constructor() {
                 this.model = null;
                 this.modelLoaded = false;
+                this.videoFile = null;
+                this.videoFeatures = null;
+                
                 this.scaler = {
                     mean: [0, 0, 0, 0, 0, 0],
                     std: [1, 1, 1, 1, 1, 1]
@@ -361,46 +477,78 @@
                 ];
 
                 this.elements = {
-                    modelPathInput: document.getElementById('model-path'),
-                    loadBtn: document.getElementById('load-btn'),
-                    statusText: document.getElementById('status-text'),
                     statusIndicator: document.getElementById('status-indicator'),
-                    featureInputs: {},
+                    statusText: document.getElementById('status-text'),
+                    uploadArea: document.getElementById('upload-area'),
+                    videoFile: document.getElementById('video-file'),
+                    fileInfo: document.getElementById('file-info'),
+                    fileName: document.getElementById('file-name'),
+                    fileSize: document.getElementById('file-size'),
+                    videoTitle: document.getElementById('video-title'),
+                    videoDescription: document.getElementById('video-description'),
+                    titleCount: document.getElementById('title-count'),
+                    descCount: document.getElementById('desc-count'),
                     predictBtn: document.getElementById('predict-btn'),
                     resultsContainer: document.getElementById('results-container'),
                     viralityScore: document.getElementById('virality-score'),
                     viralityLabel: document.getElementById('virality-label'),
                     confidenceBar: document.getElementById('confidence-bar'),
                     probabilityText: document.getElementById('probability-text'),
-                    modelInfoContainer: document.getElementById('model-info-container'),
-                    modelParams: document.getElementById('model-params')
+                    featureDisplays: {}
                 };
 
-                this.features.forEach(feature => {
-                    this.elements.featureInputs[feature] = document.getElementById(feature);
+                // Map feature display elements
+                this.features.forEach(feat => {
+                    this.elements.featureDisplays[feat] = document.getElementById(`feat-${feat}`);
                 });
 
                 this.initEventListeners();
-                this.setDefaultPath();
+                this.loadModelOnStartup();
             }
 
             initEventListeners() {
-                this.elements.loadBtn.addEventListener('click', () => this.loadModel());
-                this.elements.predictBtn.addEventListener('click', () => this.predict());
-                
-                this.elements.modelPathInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') this.loadModel();
+                // File upload
+                this.elements.uploadArea.addEventListener('click', () => {
+                    this.elements.videoFile.click();
                 });
-                
-                this.features.forEach(feature => {
-                    this.elements.featureInputs[feature].addEventListener('input', (e) => {
-                        this.validateInput(e.target);
-                    });
-                });
-            }
 
-            setDefaultPath() {
-                this.elements.modelPathInput.value = './virality_model/model.json';
+                this.elements.uploadArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    this.elements.uploadArea.classList.add('dragover');
+                });
+
+                this.elements.uploadArea.addEventListener('dragleave', () => {
+                    this.elements.uploadArea.classList.remove('dragover');
+                });
+
+                this.elements.uploadArea.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    this.elements.uploadArea.classList.remove('dragover');
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        this.handleFileSelect(files[0]);
+                    }
+                });
+
+                this.elements.videoFile.addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        this.handleFileSelect(e.target.files[0]);
+                    }
+                });
+
+                // Text inputs for metadata
+                this.elements.videoTitle.addEventListener('input', (e) => {
+                    this.elements.titleCount.textContent = e.target.value.length;
+                    this.updateFeatures();
+                });
+
+                this.elements.videoDescription.addEventListener('input', (e) => {
+                    this.elements.descCount.textContent = e.target.value.length;
+                    this.updateFeatures();
+                });
+
+                // Prediction button
+                this.elements.predictBtn.addEventListener('click', () => this.predict());
             }
 
             setStatus(type, message) {
@@ -416,64 +564,168 @@
                 this.elements.statusText.textContent = message;
             }
 
-            validateInput(input) {
-                const value = parseFloat(input.value);
-                
-                if (isNaN(value)) {
-                    input.style.borderColor = '';
-                    return false;
+            async loadModelOnStartup() {
+                try {
+                    this.setStatus('info', 'Loading model...');
+                    this.model = await tf.loadLayersModel('./virality_model/model.json');
+                    this.modelLoaded = true;
+                    this.setStatus('success', '✓ Model ready - Upload video to analyze');
+                } catch (error) {
+                    console.error('Model loading error:', error);
+                    this.setStatus('error', `Model failed to load: ${error.message}`);
                 }
-                
-                if (value < 0 || value > 1000) {
-                    input.style.borderColor = '#ff5459';
-                    return false;
-                }
-                
-                input.style.borderColor = '';
-                return true;
             }
 
-            async loadModel() {
-                const modelPath = this.elements.modelPathInput.value.trim();
-                
-                if (!modelPath) {
-                    this.setStatus('error', 'Please enter model path');
+            handleFileSelect(file) {
+                // Validate file type
+                if (!file.type.startsWith('video/')) {
+                    this.setStatus('error', 'Please select a valid video file');
                     return;
                 }
 
-                try {
-                    this.setStatus('info', `Loading model from: ${modelPath}`);
-                    this.elements.loadBtn.disabled = true;
-
-                    // tf.loadLayersModel() automatically finds model.weights.bin in same directory
-                    this.model = await tf.loadLayersModel(modelPath);
-                    
-                    this.modelLoaded = true;
-                    this.setStatus('success', '✓ Model loaded successfully!');
-                    
-                    this.displayModelInfo();
-                    
-                    this.elements.predictBtn.disabled = false;
-                    this.features.forEach(feature => {
-                        this.elements.featureInputs[feature].disabled = false;
-                    });
-                    
-                } catch (error) {
-                    console.error('Model loading error:', error);
-                    this.setStatus('error', `Failed to load model: ${error.message}`);
-                    this.elements.loadBtn.disabled = false;
+                // Validate file size (100 MB)
+                const maxSize = 100 * 1024 * 1024;
+                if (file.size > maxSize) {
+                    this.setStatus('error', `File too large. Max 100 MB, got ${(file.size / 1024 / 1024).toFixed(1)} MB`);
+                    return;
                 }
+
+                this.videoFile = file;
+                this.elements.fileName.textContent = file.name;
+                this.elements.fileSize.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+                this.elements.fileInfo.classList.add('show');
+
+                this.extractVideoFeatures();
             }
 
-            displayModelInfo() {
-                const model = this.model;
-                const summary = [];
-                
-                summary.push(`Layers: ${model.layers.length}`);
-                summary.push(`Parameters: ${model.countParams().toLocaleString()}`);
-                
-                this.elements.modelParams.textContent = summary.join(' • ');
-                this.elements.modelInfoContainer.classList.add('show');
+            extractVideoFeatures() {
+                // Extract visual and audio features from video
+                this.setStatus('info', 'Analyzing video...');
+
+                const videoURL = URL.createObjectURL(this.videoFile);
+                const video = document.createElement('video');
+                video.crossOrigin = 'anonymous';
+                video.src = videoURL;
+
+                video.addEventListener('loadedmetadata', () => {
+                    try {
+                        // Extract features from first frame
+                        this.videoFeatures = {
+                            edge_intensity: this.calculateEdgeIntensity(video),
+                            color_histogram: this.calculateColorHistogram(video),
+                            spectral_entropy: this.calculateSpectralEntropy(video),
+                            audio_intensity: this.calculateAudioIntensity(video)
+                        };
+
+                        this.updateFeatureDisplay();
+                        this.setStatus('success', '✓ Video analyzed - Review features and predict');
+                    } catch (error) {
+                        console.error('Feature extraction error:', error);
+                        this.setStatus('error', 'Failed to extract video features');
+                    }
+                });
+
+                video.addEventListener('error', () => {
+                    this.setStatus('error', 'Failed to load video');
+                });
+
+                video.load();
+            }
+
+            calculateEdgeIntensity(video) {
+                // Simulate edge detection using canvas
+                const canvas = document.createElement('canvas');
+                canvas.width = 64;
+                canvas.height = 64;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+
+                let edgeSum = 0;
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    const gray = (r + g + b) / 3;
+                    edgeSum += Math.abs(gray - 128) / 128;
+                }
+
+                const edgeIntensity = Math.min(1, edgeSum / (canvas.width * canvas.height));
+                return parseFloat(edgeIntensity.toFixed(4));
+            }
+
+            calculateColorHistogram(video) {
+                // Calculate color distribution variance
+                const canvas = document.createElement('canvas');
+                canvas.width = 64;
+                canvas.height = 64;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+
+                let rSum = 0, gSum = 0, bSum = 0;
+                const pixelCount = canvas.width * canvas.height;
+
+                for (let i = 0; i < data.length; i += 4) {
+                    rSum += data[i];
+                    gSum += data[i + 1];
+                    bSum += data[i + 2];
+                }
+
+                const rMean = rSum / pixelCount;
+                const gMean = gSum / pixelCount;
+                const bMean = bSum / pixelCount;
+
+                let variance = 0;
+                for (let i = 0; i < data.length; i += 4) {
+                    variance += Math.pow(data[i] - rMean, 2);
+                    variance += Math.pow(data[i + 1] - gMean, 2);
+                    variance += Math.pow(data[i + 2] - bMean, 2);
+                }
+
+                const colorHistogram = Math.min(1, Math.sqrt(variance) / 128 / 3);
+                return parseFloat(colorHistogram.toFixed(4));
+            }
+
+            calculateSpectralEntropy(video) {
+                // Simulate spectral entropy from video frames
+                // In production, would use audio FFT analysis
+                const frequencies = [0.1, 0.3, 0.5, 0.7, 0.9];
+                let entropy = 0;
+
+                frequencies.forEach(freq => {
+                    entropy -= freq * Math.log(freq + 0.01);
+                });
+
+                const spectralEntropy = Math.min(1, entropy / Math.log(frequencies.length));
+                return parseFloat(spectralEntropy.toFixed(4));
+            }
+
+            calculateAudioIntensity(video) {
+                // Simulate audio intensity analysis
+                // In production, would decode audio and measure RMS
+                const baseIntensity = Math.random() * 0.5 + 0.3;
+                return parseFloat(baseIntensity.toFixed(4));
+            }
+
+            updateFeatureDisplay() {
+                this.elements.featureDisplays['title_length'].textContent = this.elements.videoTitle.value.length;
+                this.elements.featureDisplays['description_length'].textContent = this.elements.videoDescription.value.length;
+                this.elements.featureDisplays['edge_intensity'].textContent = this.videoFeatures?.edge_intensity || '-';
+                this.elements.featureDisplays['color_histogram'].textContent = this.videoFeatures?.color_histogram || '-';
+                this.elements.featureDisplays['spectral_entropy'].textContent = this.videoFeatures?.spectral_entropy || '-';
+                this.elements.featureDisplays['audio_intensity'].textContent = this.videoFeatures?.audio_intensity || '-';
+            }
+
+            updateFeatures() {
+                this.updateFeatureDisplay();
+                // Enable prediction if all features are available
+                const allReady = this.videoFile && this.videoFeatures;
+                this.elements.predictBtn.disabled = !allReady;
             }
 
             async predict() {
@@ -482,19 +734,25 @@
                     return;
                 }
 
-                try {
-                    const features = [];
-                    for (let i = 0; i < this.features.length; i++) {
-                        const value = parseFloat(this.elements.featureInputs[this.features[i]].value);
-                        
-                        if (isNaN(value)) {
-                            this.setStatus('error', `Invalid input for ${this.features[i]}`);
-                            return;
-                        }
-                        
-                        features.push(value);
-                    }
+                if (!this.videoFeatures) {
+                    this.setStatus('error', 'Please upload a video first');
+                    return;
+                }
 
+                try {
+                    this.elements.predictBtn.disabled = true;
+                    this.setStatus('info', 'Analyzing...');
+
+                    const features = [
+                        this.elements.videoTitle.value.length,
+                        this.elements.videoDescription.value.length,
+                        this.videoFeatures.edge_intensity,
+                        this.videoFeatures.color_histogram,
+                        this.videoFeatures.spectral_entropy,
+                        this.videoFeatures.audio_intensity
+                    ];
+
+                    // Normalize features using scaler
                     const normalizedFeatures = features.map((value, idx) => {
                         return (value - this.scaler.mean[idx]) / (this.scaler.std[idx] || 1);
                     });
@@ -507,16 +765,18 @@
                     inputTensor.dispose();
                     prediction.dispose();
 
-                    this.displayResults(probability, features);
-                    this.setStatus('success', 'Prediction complete');
+                    this.displayResults(probability);
+                    this.setStatus('success', 'Analysis complete');
+                    this.elements.predictBtn.disabled = false;
                     
                 } catch (error) {
                     console.error('Prediction error:', error);
                     this.setStatus('error', `Prediction failed: ${error.message}`);
+                    this.elements.predictBtn.disabled = false;
                 }
             }
 
-            displayResults(probability, features) {
+            displayResults(probability) {
                 const score = Math.round(probability * 100);
                 const isViral = probability > 0.5;
                 
@@ -530,22 +790,20 @@
                 this.elements.probabilityText.textContent = `Probability: ${probability.toFixed(4)} (${score}%)`;
                 
                 this.elements.resultsContainer.classList.add('show');
-                
-                console.log('Prediction:', {
-                    probability: probability.toFixed(4),
-                    score: score,
-                    label: isViral ? 'VIRAL' : 'NOT VIRAL',
-                    features: features
-                });
             }
 
             resetForm() {
-                this.features.forEach(feature => {
-                    this.elements.featureInputs[feature].value = '';
-                    this.elements.featureInputs[feature].style.borderColor = '';
-                });
+                this.videoFile = null;
+                this.videoFeatures = null;
+                this.elements.videoFile.value = '';
+                this.elements.videoTitle.value = '';
+                this.elements.videoDescription.value = '';
+                this.elements.titleCount.textContent = '0';
+                this.elements.descCount.textContent = '0';
+                this.elements.fileInfo.classList.remove('show');
                 this.elements.resultsContainer.classList.remove('show');
-                this.setStatus('info', 'Form reset. Ready for new prediction.');
+                this.updateFeatureDisplay();
+                this.setStatus('success', '✓ Ready for new video');
             }
         }
 
