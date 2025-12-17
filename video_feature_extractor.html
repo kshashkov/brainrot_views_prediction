@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="en" data-color-scheme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Video Popularity Feature Extractor</title>
+  <style>
+    :root {
+      /* Primitive Color Tokens */
+      --color-white: rgba(255, 255, 255, 1);
+      --color-black: rgba(0, 0, 0, 1);
+      --color-cream-50: rgba(252, 252, 249, 1);
+      --color-cream-100: rgba(255, 255, 253, 1);
+      --color-gray-200: rgba(245, 245, 245, 1);
+      --color-gray-300: rgba(167, 169, 169, 1);
+      --color-gray-400: rgba(119, 124, 124, 1);
+      --color-slate-500: rgba(98, 108, 113, 1);
+      --color-brown-600: rgba(94, 82, 64, 1);
+      --color-charcoal-700: rgba(31, 33, 33, 1);
+      --color-charcoal-800: rgba(38, 40, 40, 1);
+      --color-slate-900: rgba(19, 52, 59, 1);
+      --color-teal-300: rgba(50, 184, 198, 1);
+      --color-teal-400: rgba(45, 166, 178, 1);
+      --color-teal-500: rgba(33, 128, 141, 1);
+      --color-teal-600: rgba(29, 116, 128, 1);
+      --color-teal-700: rgba(26, 104, 115, 1);
+      --color-teal-800: rgba(41, 150, 161, 1);
+      --color-red-400: rgba(255, 84, 89, 1);
+      --color-red-500: rgba(192, 21, 47, 1);
+      --color-orange-400: rgba(230, 129, 97, 1);
+      --color-orange-500: rgba(168, 75, 47, 1);
+
+      /* RGB versions for opacity control */
+      --color-brown-600-rgb: 94, 82, 64;
+      --color-teal-500-rgb: 33, 128, 141;
+      --color-slate-900-rgb: 19, 52, 59;
+      --color-slate-500-rgb: 98, 108, 113;
+      --color-red-500-rgb: 192, 21, 47;
+      --color-red-400-rgb: 255, 84, 89;
+      --color-orange-500-rgb: 168, 75, 47;
+      --color-orange-400-rgb: 230, 129, 97;
+
+      /* Background color tokens (Light Mode) */
+      --color-bg-1: rgba(59, 130, 246, 0.08);
+      --color-bg-2: rgba(245, 158, 11, 0.08);
+      --color-bg-3: rgba(34, 197, 94, 0.08);
+      --color-bg-4: rgba(239, 68, 68, 0.08);
+      --color-bg-5: rgba(147, 51, 234, 0.08);
+      --color-bg-6: rgba(249, 115, 22, 0.08);
+      --color-bg-7: rgba(236, 72, 153, 0.08);
+      --color-bg-8: rgba(6, 182, 212, 0.08);
+
+      /* Semantic Color Tokens (Light Mode) */
+      --color-background: var(--color-cream-50);
+      --color-surface: var(--color-cream-100);
+      --color-text: var(--color-slate-900);
+      --color-text-secondary: var(--color-slate-500);
+      --color-primary: var(--color-teal-500);
+      --color-primary-hover: var(--color-teal-600);
+      --color-primary-active: var(--color-teal-700);
+      --color-secondary: rgba(var(--color-brown-600-rgb), 0.12);
+      --color-secondary-hover: rgba(var(--color-brown-600-rgb), 0.2);
+      --color-secondary-active: rgba(var(--color-brown-600-rgb), 0.25);
+      --color-border: rgba(var(--color-brown-600-rgb), 0.2);
+      --color-btn-primary-text: var(--color-cream-50);
+      --color-card-border: rgba(var(--color-brown-600-rgb), 0.12);
+      --color-card-border-inner: rgba(var(--color-brown-600-rgb), 0.12);
+      --color-error: var(--color-red-500);
+      --color-success: var(--color-teal-500);
+      --color-warning: var(--color-orange-500);
+      --color-info: var(--color-slate-500);
+      --color-focus-ring: rgba(var(--color-teal-500-rgb), 0.4);
+      --color-select-caret: rgba(var(--color-slate-900-rgb), 0.8);
+
+      /* RGB versions for opacity control */
+      --color-success-rgb: 33, 128, 141;
+      --color-error-rgb: 192, 21, 47;
+      --color-warning-rgb: 168, 75, 47;
+      --color-info-rgb: 98, 108, 113;
+
+      /* Typography */
+      --font-family-base: "FKGroteskNeue", "Geist", "Inter", -apple-system,
+        BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-family-mono: "Berkeley Mono", ui-monospace, SFMono-Regular, Menlo,
+        Monaco, Consolas, monospace;
+      --font-size-xs: 11px;
+      --font-size-sm: 12px;
+      --font-size-base: 14px;
+      --font-size-md: 14px;
+      --font-size-lg: 16px;
+      --font-size-xl: 18px;
+      --font-size-2xl: 20px;
+      --font-size-3xl: 24px;
+      --font-size-4xl: 30px;
+      --font-weight-normal: 400;
+      --font-weight-medium: 500;
+      --font-weight-semibold: 550;
+      --font-weight-bold: 600;
+      --line-height-tight: 1.2;
+      --line-height-normal: 1.5;
+      --letter-spacing-tight: -0.01em;
+
+      /* Spacing */
+      --space-0: 0;
+      --space-1: 1px;
+      --space-2: 2px;
+      --space-4: 4px;
+      --space-6: 6px;
+      --space-8: 8px;
+      --space-10: 10px;
+      --space-12: 12px;
+      --space-16: 16px;
+      --space-20: 20px;
+      --space-24: 24px;
+      --space-32: 32px;
+
+      /* Border Radius */
+      --radius-sm: 6px;
+      --radius-base: 8px;
+      --radius-md: 10px;
+      --radius-lg: 12px;
+      --radius-full: 9999px;
+
+      /* Shadows */
+      --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.02);
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.04),
+        0 2px 4px -1px rgba(0, 0, 0, 0.02);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.04),
+        0 4px 6px -2px rgba(0, 0, 0, 0.02);
+      --shadow-inset-sm: inset 0 1px 0 rgba(255, 255, 255, 0.15),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.03);
+
+      /* Animation */
+      --duration-fast: 150ms;
+      --duration-normal: 250ms;
+      --ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+
+      /* Layout */
+      --container-sm: 640px;
+      --container-md: 768px;
+      --container-lg: 1024px;
+      --container-xl: 1280px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --color-gray-400-rgb: 119, 124, 124;
+        --color-teal-300-rgb: 50, 184, 198;
+        --color-gray-300-rgb: 167, 169, 169;
+        --color-gray-200-rgb: 245, 245, 245;
+
+        --color-bg-1: rgba(29, 78, 216, 0.15);
+        --color-bg-2: rgba(180, 83, 9, 0.15);
+        --color-bg-3: rgba(21, 128, 61, 0.15);
+        --color-bg-4: rgba(185, 28, 28, 0.15);
+        --color-bg-5: rgba(107, 33, 168, 0.15);
+        --color-bg-6: rgba(194, 65, 12, 0.15);
+        --color-bg-7: rgba(190, 24, 93, 0.15);
+        --color-bg-8: rgba(8, 145, 178, 0.15);
+
+        --color-background: var(--color-charcoal-700);
+        --color-surface: var(--color-charcoal-800);
+        --color-text: var(--color-gray-200);
+        --color-text-secondary: rgba(var(--color-gray-300-rgb), 0.7);
+        --color-primary: var(--color-teal-300);
+        --color-primary-hover: var(--color-teal-400);
+        --color-primary-active: var(--color-teal-800);
+        --color-secondary: rgba(var(--color-gray-400-rgb), 0.15);
+        --color-secondary-hover: rgba(var(--color-gray-400-rgb), 0.25);
+        --color-secondary-active: rgba(var(--color-gray-400-rgb), 0.3);
+        --color-border: rgba(var(--color-gray-400-rgb), 0.3);
+        --color-error: var(--color-red-400);
+        --color-success: var(--color-teal-300);
+        --color-warning: var(--color-orange-400);
+        --color-info: var(--color-gray-300);
+        --color-focus-ring: rgba(var(--color-teal-300-rgb), 0.4);
+        --color-btn-primary-text: var(--color-slate-900);
+        --color-card-border: rgba(var(--color-gray-400-rgb), 0.2);
+        --color-card-border-inner: rgba(var(--color-gray-400-rgb), 0.15);
+        --shadow-inset-sm: inset 0 1px 0 rgba(255, 255, 255, 0.1),
+          inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+        --button-border-secondary: rgba(var(--color-gray-400-rgb), 0.2);
+        --color-border-secondary: rgba(var(--color-gray-400-rgb), 0.2);
+        --color-select-caret: rgba(var(--color-gray-200-rgb), 0.8);
+
+        --focus-ring: 0 0 0 3px var(--color-focus-ring);
+        --focus-outline: 2px solid var(--color-primary);
+        --status-bg-opacity: 0.15;
+        --status-border-opacity: 0.25;
+
+        --color-success-rgb: var(--color-teal-300-rgb);
+        --color-error-rgb: var(--color-red-400-rgb);
+        --color-warning-rgb: var(--color-orange-400-rgb);
+        --color-info-rgb: var(--color-gray-300-rgb);
+      }
+    }
+
+    [data-color-scheme="dark"] {
+      --color-gray-400-rgb: 119, 124, 124;
+      --color-teal-300-rgb: 50, 184, 198;
+      --color-gray-300-rgb: 167, 169, 169;
+      --color-gray-200-rgb: 245, 245, 245;
+
+      --color-bg-1: rgba(29, 78, 216, 0.15);
+      --color-bg-2: rgba(180, 83, 9, 0.15);
+      --color-bg-3: rgba(21, 128, 61, 0.15);
+      --color-bg-4: rgba(185, 28, 28, 0.15);
+      --color-bg-5: rgba(107, 33, 168, 0.15);
+      --color-bg-6: rgba(194, 65, 12, 0.15);
+      --color-bg-7: rgba(190, 24, 93, 0.15);
+      --color-bg-8: rgba(8, 145, 178, 0.15);
+
+      --color-background: var(--color-charcoal-700);
+      --color-surface: var(--color-charcoal-800);
+      --color-text: var(--color-gray-200);
+      --color-text-secondary: rgba(var(--color-gray-300-rgb), 0.7);
+      --color-primary: var(--color-teal-300);
+      --color-primary-hover: var(--color-teal-400);
+      --color-primary-active: var(--color-teal-800);
+      --color-secondary: rgba(var(--color-gray-400-rgb), 0.15);
+      --color-secondary-hover: rgba(var(--color-gray-400-rgb), 0.25);
+      --color-secondary-active: rgba(var(--color-gray-400-rgb), 0.3);
+      --color-border: rgba(var(--color-gray-400-rgb), 0.3);
+      --color-error: var(--color-red-400);
+      --color-success: var(--color-teal-300);
+      --color-warning: var(--color-orange-400);
+      --color-info: var(--color-gray-300);
+      --color-focus-ring: rgba(var(--color-teal-300-rgb), 0.4);
+      --color-btn-primary-text: var(--color-slate-900);
+      --color-card-border: rgba(var(--color-gray-400-rgb), 0.15);
+      --color-card-border-inner: rgba(var(--color-gray-400-rgb), 0.15);
+      --shadow-inset-sm: inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+      --color-border-secondary: rgba(var(--color-gray-400-rgb), 0.2);
+      --color-select-caret: rgba(var(--color-gray-200-rgb), 0.8);
+
+      --focus-ring: 0 0 0 3px var(--color-focus-ring);
+      --focus-outline: 2px solid var(--color-primary);
+      --status-bg-opacity: 0.15;
+      --status-border-opacity: 0.25;
+
+      --color-success-rgb: var(--color-teal-300-rgb);
+      --color-error-rgb: var(--color-red-400-rgb);
+      --color-warning-rgb: var(--color-orange-400-rgb);
+      --color-info-rgb: var(--color-gray-300-rgb);
+    }
+
+    [data-color-scheme="light"] {
+      --color-brown-600-rgb: 94, 82, 64;
+      --color-teal-500-rgb: 33, 128, 141;
+      --color-slate-900-rgb: 19, 52, 59;
+
+      --color-background: var(--color-cream-50);
+      --color-surface: var(--color-cream-100);
+      --color-text: var(--color-slate-900);
+      --color-text-secondary: var(--color-slate-500);
+      --color-primary: var(--color-teal-500);
+      --color-primary-hover: var(--color-teal-600);
+      --color-primary-active: var(--color-teal-700);
+      --color-secondary: rgba(var(--color-brown-600-rgb), 0.12);
+      --color-secondary-hover: rgba(var(--color-brown-600-rgb), 0.2);
+      --color-secondary-active: rgba(var(--color-brown-600-rgb), 0.25);
+      --color-border: rgba(var(--color-brown-600-rgb), 0.2);
+      --color-btn-primary-text: var(--color-cream-50);
+      --color-card-border: rgba(var(--color-brown-600-rgb), 0.12);
+      --color-card-border-inner: rgba(var(--color-brown-600-rgb), 0.12);
+      --color-error: var(--color-red-500);
+      --color-success: var(--color-teal-500);
+      --color-warning: var(--color-orange-500);
+      --color-info: var(--color-slate-500);
+      --color-focus-ring: rgba(var(--color-teal-500-rgb), 0.4);
+
+      --color-success-rgb: var(--color-teal-500-rgb);
+      --color-error-rgb: var(--color-red-500-rgb);
+      --color-warning-rgb: var(--color-orange-500-rgb);
+      --color-info-rgb: var(--color-slate-500-rgb);
+    }
+
+    html {
+      font-size: var(--font-size-base);
+      font-family: var(--font-family-base);
+      line-height: var(--line-height-normal);
+      color: var(--color-text);
+      background-color: var(--color-background);
+      -webkit-font-smoothing: antialiased;
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: inherit;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      margin: 0;
+      font-weight: var(--font-weight-semibold);
+      line-height: var(--line-height-tight);
+      color: var(--color-text);
+      letter-spacing: var(--letter-spacing-tight);
+    }
+
+    h1 {
+      font-size: var(--font-size-4xl);
+    }
+    h2 {
+      font-size: var(--font-size-3xl);
+    }
+    h3 {
+      font-size: var(--font-size-2xl);
+    }
+    h4 {
+      font-size: var(--font-size-xl);
+    }
+
+    p {
+      margin: 0 0 var(--space-16) 0;
+    }
+
+    a {
+      color: var(--color-primary);
+      text-decoration: none;
+      transition: color var(--duration-fast) var(--ease-standard);
+    }
+
+    a:hover {
+      color: var(--color-primary-hover);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-8) var(--space-16);
+      border-radius: var(--radius-base);
+      font-size: var(--font-size-base);
+      font-weight: 500;
+      line-height: 1.5;
+      cursor: pointer;
+      transition: all var(--duration-normal) var(--ease-standard);
+      border: none;
+      text-decoration: none;
+      position: relative;
+    }
+
+    .btn:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px var(--color-focus-ring);
+    }
+
+    .btn--primary {
+      background: var(--color-primary);
+      color: var(--color-btn-primary-text);
+    }
+
+    .btn--primary:hover {
+      background: var(--color-primary-hover);
+    }
+
+    .btn--primary:active {
+      background: var(--color-primary-active);
+    }
+
+    .btn--secondary {
+      background: var(--color-secondary);
+      color: var(--color-text);
+    }
+
+    .btn--secondary:hover {
+      background: var(--color-secondary-hover);
+    }
+
+    .btn--secondary:active {
+      background: var(--color-secondary-active);
+    }
+
+    .btn--outline {
+      background: transparent;
+      border: 1px solid var(--color-border);
+      color: var(--color-text);
+    }
+
+    .btn--outline:hover {
+      background: var(--color-secondary);
+    }
+
+    .btn--sm {
+      padding: var(--space-4) var(--space-12);
+      font-size: var(--font-size-sm);
+      border-radius: var(--radius-sm);
+    }
+
+    .btn--lg {
+      padding: var(--space-10) var(--space-20);
+      font-size: var(--font-size-lg);
+      border-radius: var(--radius-md);
+    }
+
+    .btn--full-width {
+      width: 100%;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .form-control {
+      display: block;
+      width: 100%;
+      padding: var(--space-8) var(--space-12);
+      font-size: var(--font-size-md);
+      line-height: 1.5;
+      color: var(--color-text);
+      background-color: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-base);
+      transition: border-color var(--duration-fast) var(--ease-standard),
+        box-shadow var(--duration-fast) var(--ease-standard);
+    }
+
+    .form-control:focus {
+      border-color: var(--color-primary);
+      outline: 2px solid var(--color-primary);
+      outline-offset: 1px;
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: var(--space-8);
+      font-weight: var(--font-weight-medium);
+      font-size: var(--font-size-sm);
+    }
+
+    .form-group {
+      margin-bottom: var(--space-16);
+    }
+
+    .card {
+      background-color: var(--color-surface);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--color-card-border);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+      transition: box-shadow var(--duration-normal) var(--ease-standard);
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-md);
+    }
+
+    .card__body {
+      padding: var(--space-16);
+    }
+
+    .card__header {
+      padding: var(--space-16);
+      border-bottom: 1px solid var(--color-card-border-inner);
+      background: linear-gradient(
+        135deg,
+        rgba(var(--color-teal-500-rgb), 0.06),
+        rgba(var(--color-brown-600-rgb), 0.03)
+      );
+    }
+
+    .card__title {
+      font-size: var(--font-size-xl);
+      margin-bottom: var(--space-4);
+    }
+
+    .card__subtitle {
+      font-size: var(--font-size-sm);
+      color: var(--color-text-secondary);
+    }
+
+    .container {
+      width: 100%;
+      margin-right: auto;
+      margin-left: auto;
+      padding-right: var(--space-16);
+      padding-left: var(--space-16);
+      padding-top: var(--space-24);
+      padding-bottom: var(--space-24);
+      max-width: var(--container-lg);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+      gap: var(--space-16);
+      align-items: flex-start;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .section-title {
+      font-size: var(--font-size-2xl);
+      margin-bottom: var(--space-8);
+    }
+
+    .section-subtitle {
+      font-size: var(--font-size-sm);
+      color: var(--color-text-secondary);
+      margin-bottom: var(--space-16);
+    }
+
+    .features-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: var(--space-12);
+      font-size: var(--font-size-sm);
+    }
+
+    .features-table th,
+    .features-table td {
+      padding: var(--space-8);
+      border-bottom: 1px solid var(--color-card-border-inner);
+      text-align: left;
+    }
+
+    .features-table th {
+      font-weight: var(--font-weight-medium);
+      color: var(--color-text-secondary);
+      background-color: rgba(var(--color-brown-600-rgb), 0.04);
+    }
+
+    .features-table td.code {
+      font-family: var(--font-family-mono);
+      font-size: var(--font-size-xs);
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      padding: var(--space-6) var(--space-12);
+      border-radius: var(--radius-full);
+      font-weight: var(--font-weight-medium);
+      font-size: var(--font-size-sm);
+      border: 1px solid rgba(var(--color-info-rgb), 0.25);
+      background-color: rgba(var(--color-info-rgb), 0.12);
+      color: var(--color-info);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--color-info);
+      margin-right: var(--space-6);
+    }
+
+    .status--success {
+      border-color: rgba(var(--color-success-rgb), 0.25);
+      background-color: rgba(var(--color-success-rgb), 0.12);
+      color: var(--color-success);
+    }
+
+    .status--success .status-dot {
+      background-color: var(--color-success);
+    }
+
+    .status--error {
+      border-color: rgba(var(--color-error-rgb), 0.25);
+      background-color: rgba(var(--color-error-rgb), 0.12);
+      color: var(--color-error);
+    }
+
+    .status--error .status-dot {
+      background-color: var(--color-error);
+    }
+
+    .status--warning {
+      border-color: rgba(var(--color-warning-rgb), 0.25);
+      background-color: rgba(var(--color-warning-rgb), 0.12);
+      color: var(--color-warning);
+    }
+
+    .status--warning .status-dot {
+      background-color: var(--color-warning);
+    }
+
+    .video-preview {
+      width: 100%;
+      max-height: 260px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--color-card-border-inner);
+      background-color: var(--color-black);
+      object-fit: contain;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .mono {
+      font-family: var(--font-family-mono);
+      font-size: var(--font-size-sm);
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background-color: rgba(var(--color-brown-600-rgb), 0.08);
+      font-size: 11px;
+      margin-right: 6px;
+      margin-bottom: 4px;
+      color: var(--color-text-secondary);
+    }
+
+    .chip-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      margin-right: 4px;
+      background-color: rgba(var(--color-teal-500-rgb), 0.8);
+    }
+
+    .footer-note {
+      font-size: var(--font-size-xs);
+      color: var(--color-text-secondary);
+      margin-top: var(--space-12);
+    }
+
+    @font-face {
+      font-family: 'FKGroteskNeue';
+      src: url('https://r2cdn.perplexity.ai/fonts/FKGroteskNeue.woff2')
+        format('woff2');
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header style="margin-bottom: var(--space-20);">
+      <div style="display:flex; justify-content: space-between; align-items:center; flex-wrap: wrap; gap: 8px;">
+        <div>
+          <h1>Video Popularity Feature Extractor</h1>
+          <p class="section-subtitle">
+            Upload a video, extract visual and audio features in the browser, and inspect the values that will feed your model.
+          </p>
+        </div>
+        <div class="status" id="status-indicator">
+          <span class="status-dot"></span>
+          <span id="status-text">Waiting for video upload…</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <!-- Left: Upload + video + controls -->
+      <section>
+        <div class="card">
+          <div class="card__header">
+            <div class="card__title">1. Upload Video</div>
+            <div class="card__subtitle">The file is processed entirely in the browser. No data is sent to any server.</div>
+          </div>
+          <div class="card__body">
+            <form id="video-form">
+              <div class="form-group">
+                <label class="form-label" for="video-input">Video file</label>
+                <input
+                  id="video-input"
+                  class="form-control"
+                  type="file"
+                  accept="video/*"
+                  required
+                />
+              </div>
+
+              <div style="display:flex; gap: var(--space-12); margin-top: var(--space-8);">
+                <button type="button" id="extract-btn" class="btn btn--primary btn--lg">
+                  Extract Features
+                </button>
+                <button type="button" id="reset-btn" class="btn btn--secondary btn--lg">
+                  Reset
+                </button>
+              </div>
+
+              <p class="footer-note">
+                Features are computed over a fixed number of sampled frames and audio samples for a fast, approximate pipeline:
+                <span class="mono">edge_intensity</span>,
+                <span class="mono">color_histogram</span>,
+                <span class="mono">spectral_entropy</span>,
+                <span class="mono">audio_intensity</span>.
+              </p>
+            </form>
+          </div>
+        </div>
+
+        <div style="height: 16px;"></div>
+
+        <div class="card">
+          <div class="card__header">
+            <div class="card__title">2. Video Preview</div>
+            <div class="card__subtitle">We grab frames and audio segments from this element.</div>
+          </div>
+          <div class="card__body">
+            <video id="video" class="video-preview" controls crossorigin="anonymous"></video>
+            <p class="footer-note">
+              The feature extractor uses a hidden canvas and Web Audio API to analyze the content.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: Features output -->
+      <section>
+        <div class="card">
+          <div class="card__header">
+            <div class="card__title">3. Extracted Features</div>
+            <div class="card__subtitle">Values normalized to [0, 1] for direct model consumption.</div>
+          </div>
+          <div class="card__body">
+            <div style="margin-bottom: var(--space-8);">
+              <span class="chip"><span class="chip-dot"></span>edge_intensity</span>
+              <span class="chip"><span class="chip-dot"></span>color_histogram</span>
+              <span class="chip"><span class="chip-dot"></span>spectral_entropy</span>
+              <span class="chip"><span class="chip-dot"></span>audio_intensity</span>
+            </div>
+
+            <table class="features-table" aria-describedby="features-help">
+              <thead>
+                <tr>
+                  <th>Feature</th>
+                  <th>Description</th>
+                  <th>Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="mono">edge_intensity</span></td>
+                  <td>Average normalized edge magnitude across sampled frames.</td>
+                  <td class="code" id="edge_intensity_value">–</td>
+                </tr>
+                <tr>
+                  <td><span class="mono">color_histogram</span></td>
+                  <td>Average color richness based on histogram spread.</td>
+                  <td class="code" id="color_histogram_value">–</td>
+                </tr>
+                <tr>
+                  <td><span class="mono">spectral_entropy</span></td>
+                  <td>Entropy of audio spectrum over sampled windows.</td>
+                  <td class="code" id="spectral_entropy_value">–</td>
+                </tr>
+                <tr>
+                  <td><span class="mono">audio_intensity</span></td>
+                  <td>Average normalized RMS energy of the audio track.</td>
+                  <td class="code" id="audio_intensity_value">–</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <p id="features-help" class="footer-note">
+              Once you are happy with the definitions, these four numbers are exactly what will be fed into your model.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Hidden canvas for frame analysis -->
+  <canvas id="hidden-canvas" class="hidden"></canvas>
+
+  <script>
+    const videoInput = document.getElementById("video-input");
+    const videoEl = document.getElementById("video");
+    const extractBtn = document.getElementById("extract-btn");
+    const resetBtn = document.getElementById("reset-btn");
+    const statusIndicator = document.getElementById("status-indicator");
+    const statusText = document.getElementById("status-text");
+
+    const edgeEl = document.getElementById("edge_intensity_value");
+    const colorEl = document.getElementById("color_histogram_value");
+    const entropyEl = document.getElementById("spectral_entropy_value");
+    const audioIntEl = document.getElementById("audio_intensity_value");
+
+    const hiddenCanvas = document.getElementById("hidden-canvas");
+    const ctx = hiddenCanvas.getContext("2d", { willReadFrequently: true });
+
+    function setStatus(type, text) {
+      statusIndicator.classList.remove("status--success", "status--error", "status--warning");
+      if (type === "success") statusIndicator.classList.add("status--success");
+      else if (type === "error") statusIndicator.classList.add("status--error");
+      else if (type === "warning") statusIndicator.classList.add("status--warning");
+      statusText.textContent = text;
+    }
+
+    function clearOutputs() {
+      edgeEl.textContent = "–";
+      colorEl.textContent = "–";
+      entropyEl.textContent = "–";
+      audioIntEl.textContent = "–";
+    }
+
+    resetBtn.addEventListener("click", () => {
+      videoInput.value = "";
+      videoEl.removeAttribute("src");
+      videoEl.load();
+      clearOutputs();
+      setStatus("info", "Waiting for video upload…");
+    });
+
+    videoInput.addEventListener("change", () => {
+      clearOutputs();
+      const file = videoInput.files && videoInput.files[0];
+      if (!file) {
+        setStatus("warning", "No video file selected.");
+        return;
+      }
+      try {
+        const url = URL.createObjectURL(file);
+        videoEl.src = url;
+        videoEl.load();
+        setStatus("info", "Video loaded. Click “Extract Features”.");
+      } catch (e) {
+        console.error(e);
+        setStatus("error", "Unable to load video in this browser.");
+      }
+    });
+
+    function getLuma(r, g, b) {
+      return 0.299 * r + 0.587 * g + 0.114 * b;
+    }
+
+    function computeFrameFeatures(imageData) {
+      const { data, width, height } = imageData;
+      const pixelCount = width * height;
+
+      // Edge intensity via simple Sobel on luma downsampled grid
+      const step = 4; // stride in pixels to subsample
+      let gx, gy, mag;
+      let edgeSum = 0;
+      let edgeSamples = 0;
+
+      // Color histogram: simple 16-bin histogram on luma
+      const bins = 16;
+      const hist = new Array(bins).fill(0);
+
+      for (let y = 1; y < height - 1; y += step) {
+        for (let x = 1; x < width - 1; x += step) {
+          const idx = (y * width + x) * 4;
+          const r = data[idx];
+          const g = data[idx + 1];
+          const b = data[idx + 2];
+
+          const l = getLuma(r, g, b);
+          const bin = Math.min(bins - 1, Math.floor((l / 255) * bins));
+          hist[bin] += 1;
+
+          const idxL = (y * width + (x - 1)) * 4;
+          const idxR = (y * width + (x + 1)) * 4;
+          const idxT = ((y - 1) * width + x) * 4;
+          const idxB = ((y + 1) * width + x) * 4;
+
+          const lL = getLuma(data[idxL], data[idxL + 1], data[idxL + 2]);
+          const lR = getLuma(data[idxR], data[idxR + 1], data[idxR + 2]);
+          const lT = getLuma(data[idxT], data[idxT + 1], data[idxT + 2]);
+          const lB = getLuma(data[idxB], data[idxB + 1], data[idxB + 2]);
+
+          gx = lR - lL;
+          gy = lB - lT;
+          mag = Math.sqrt(gx * gx + gy * gy);
+          edgeSum += mag;
+          edgeSamples++;
+        }
+      }
+
+      const maxPossibleMag = 255 * Math.sqrt(2);
+      const edgeIntensity =
+        edgeSamples > 0 ? Math.min(1, (edgeSum / edgeSamples) / maxPossibleMag) : 0;
+
+      const totalHist = hist.reduce((a, b) => a + b, 0) || 1;
+      const avgBin = totalHist / bins;
+      let spread = 0;
+      for (let i = 0; i < bins; i++) {
+        const d = hist[i] - avgBin;
+        spread += d * d;
+      }
+      spread = Math.sqrt(spread / bins);
+      const maxSpread = avgBin * Math.sqrt(bins);
+      const colorHistogram = Math.min(1, spread / (maxSpread || 1));
+
+      return { edgeIntensity, colorHistogram };
+    }
+
+    async function extractVisualFeatures(sampleFrames = 12) {
+      return new Promise((resolve, reject) => {
+        if (!videoEl.src) {
+          reject(new Error("No video loaded"));
+          return;
+        }
+
+        const duration = videoEl.duration || 0;
+        if (!duration || !isFinite(duration)) {
+          reject(new Error("Cannot read video duration"));
+          return;
+        }
+
+        const width = 256;
+        const height = 144;
+        hiddenCanvas.width = width;
+        hiddenCanvas.height = height;
+
+        let currentSample = 0;
+        let edgeAccum = 0;
+        let colorAccum = 0;
+
+        const handleSeek = () => {
+          try {
+            ctx.drawImage(videoEl, 0, 0, width, height);
+            const frame = ctx.getImageData(0, 0, width, height);
+            const { edgeIntensity, colorHistogram } = computeFrameFeatures(frame);
+            edgeAccum += edgeIntensity;
+            colorAccum += colorHistogram;
+
+            currentSample++;
+            if (currentSample >= sampleFrames) {
+              videoEl.removeEventListener("seeked", handleSeek);
+              const edgeIntensity = edgeAccum / sampleFrames;
+              const colorHistogram = colorAccum / sampleFrames;
+              resolve({ edge_intensity: edgeIntensity, color_histogram: colorHistogram });
+            } else {
+              const t = (duration * (currentSample + 0.5)) / (sampleFrames + 1);
+              videoEl.currentTime = Math.min(duration - 0.05, t);
+            }
+          } catch (e) {
+            videoEl.removeEventListener("seeked", handleSeek);
+            reject(e);
+          }
+        };
+
+        videoEl.addEventListener("seeked", handleSeek);
+
+        const startTime = duration * 0.1;
+        videoEl.currentTime = Math.min(duration - 0.05, startTime);
+      });
+    }
+
+    async function extractAudioFeatures() {
+      return new Promise((resolve, reject) => {
+        try {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContext) {
+            resolve({ spectral_entropy: 0, audio_intensity: 0 });
+            return;
+          }
+
+          const ac = new AudioContext();
+          fetch(videoEl.src)
+            .then((res) => res.arrayBuffer())
+            .then((buf) => ac.decodeAudioData(buf))
+            .then((audioBuffer) => {
+              const raw = audioBuffer.getChannelData(0);
+              const totalSamples = raw.length;
+              if (!totalSamples) {
+                resolve({ spectral_entropy: 0, audio_intensity: 0 });
+                return;
+              }
+
+              const windowSize = 1024;
+              const hop = 512;
+              let frameCount = 0;
+
+              let rmsSum = 0;
+              let entropySum = 0;
+
+              const fftSize = windowSize;
+              const re = new Float32Array(fftSize);
+              const im = new Float32Array(fftSize);
+
+              function fft(signal) {
+                re.set(signal);
+                im.fill(0);
+                const n = fftSize;
+                let j = 0;
+                for (let i = 0; i < n; i++) {
+                  if (i < j) {
+                    const tr = re[i];
+                    re[i] = re[j];
+                    re[j] = tr;
+                    const ti = im[i];
+                    im[i] = im[j];
+                    im[j] = ti;
+                  }
+                  let m = n >> 1;
+                  while (m >= 1 && j >= m) {
+                    j -= m;
+                    m >>= 1;
+                  }
+                  j += m;
+                }
+                for (let s = 1; s <= Math.log2(n); s++) {
+                  const m = 1 << s;
+                  const m2 = m >> 1;
+                  const wAngle = (-2 * Math.PI) / m;
+                  for (let k = 0; k < n; k += m) {
+                    for (let i = 0; i < m2; i++) {
+                      const tIndex = k + i + m2;
+                      const uIndex = k + i;
+                      const wr = Math.cos(wAngle * i);
+                      const wi = Math.sin(wAngle * i);
+                      const tr = wr * re[tIndex] - wi * im[tIndex];
+                      const ti = wr * im[tIndex] + wi * re[tIndex];
+                      re[tIndex] = re[uIndex] - tr;
+                      im[tIndex] = im[uIndex] - ti;
+                      re[uIndex] += tr;
+                      im[uIndex] += ti;
+                    }
+                  }
+                }
+              }
+
+              for (let start = 0; start + windowSize <= totalSamples; start += hop) {
+                const window = raw.subarray(start, start + windowSize);
+                let rms = 0;
+                for (let i = 0; i < windowSize; i++) {
+                  const v = window[i];
+                  rms += v * v;
+                }
+                rms = Math.sqrt(rms / windowSize);
+                rmsSum += rms;
+
+                const hannWindow = new Float32Array(windowSize);
+                for (let i = 0; i < windowSize; i++) {
+                  hannWindow[i] = window[i] * (0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (windowSize - 1)));
+                }
+
+                fft(hannWindow);
+
+                const mags = new Float32Array(windowSize / 2);
+                let magSum = 0;
+                for (let k = 0; k < mags.length; k++) {
+                  const mr = re[k];
+                  const mi = im[k];
+                  const m = Math.sqrt(mr * mr + mi * mi);
+                  mags[k] = m;
+                  magSum += m;
+                }
+
+                if (magSum === 0) magSum = 1;
+                let entropy = 0;
+                for (let k = 0; k < mags.length; k++) {
+                  const p = mags[k] / magSum;
+                  if (p > 0) entropy -= p * Math.log2(p);
+                }
+                const maxEntropy = Math.log2(mags.length);
+                const normEntropy = maxEntropy > 0 ? entropy / maxEntropy : 0;
+                entropySum += normEntropy;
+
+                frameCount++;
+              }
+
+              if (!frameCount) {
+                resolve({ spectral_entropy: 0, audio_intensity: 0 });
+                return;
+              }
+
+              const avgRms = rmsSum / frameCount;
+              const avgEntropy = entropySum / frameCount;
+
+              const audioIntensity = Math.min(1, Math.max(0, avgRms / 0.5));
+              const spectralEntropy = Math.min(1, Math.max(0, avgEntropy));
+
+              resolve({
+                spectral_entropy: spectralEntropy,
+                audio_intensity: audioIntensity,
+              });
+            })
+            .catch((err) => {
+              console.error(err);
+              resolve({ spectral_entropy: 0, audio_intensity: 0 });
+            });
+        } catch (e) {
+          console.error(e);
+          resolve({ spectral_entropy: 0, audio_intensity: 0 });
+        }
+      });
+    }
+
+    extractBtn.addEventListener("click", async () => {
+      if (!videoEl.src) {
+        setStatus("warning", "Please upload a video first.");
+        return;
+      }
+
+      setStatus("info", "Extracting features… this may take a few seconds.");
+      clearOutputs();
+      extractBtn.disabled = true;
+
+      try {
+        const [visual, audio] = await Promise.all([
+          extractVisualFeatures(10),
+          extractAudioFeatures(),
+        ]);
+
+        edgeEl.textContent = visual.edge_intensity.toFixed(6);
+        colorEl.textContent = visual.color_histogram.toFixed(6);
+        entropyEl.textContent = audio.spectral_entropy.toFixed(6);
+        audioIntEl.textContent = audio.audio_intensity.toFixed(6);
+
+        setStatus("success", "Features extracted successfully.");
+      } catch (e) {
+        console.error(e);
+        setStatus("error", "Failed to extract features in this browser.");
+      } finally {
+        extractBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
