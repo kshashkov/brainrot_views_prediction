@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Virality Predictor - Inference</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.0.0"></script>
+    <style>
+        :root {
+            --color-primary: #2180a4;
+            --color-error: #ff5459;
+            --color-success: #2180a4;
+            --color-bg: #fcfcf9;
+            --color-surface: #fffffe;
+            --color-text: #134252;
+            --color-text-secondary: #626c71;
+            --color-border: rgba(94, 82, 64, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--color-bg);
+            color: var(--color-text);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            margin: 0 0 10px 0;
+            font-size: 32px;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            color: var(--color-text-secondary);
+            font-size: 16px;
+        }
+
+        .status-section {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ccc;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.status--success {
+            background: var(--color-success);
+            animation: none;
+        }
+
+        .status-indicator.status--error {
+            background: var(--color-error);
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .status-text {
+            flex: 1;
+            color: var(--color-text-secondary);
+        }
+
+        .card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .card h2 {
+            margin-top: 0;
+            margin-bottom: 16px;
+            font-size: 20px;
+            color: var(--color-text);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 14px;
+            color: var(--color-text);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            font-size: 14px;
+            background: var(--color-bg);
+            color: var(--color-text);
+            font-family: inherit;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(33, 128, 141, 0.1);
+        }
+
+        .form-control:disabled {
+            background: #f5f5f5;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 20px;
+            background: var(--color-primary);
+            color: #fafbfa;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 200ms;
+        }
+
+        .btn:hover:not(:disabled) {
+            background: #1a6f8f;
+            transform: translateY(-1px);
+        }
+
+        .btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: rgba(94, 82, 64, 0.12);
+            color: var(--color-text);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: rgba(94, 82, 64, 0.2);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .results-container {
+            background: linear-gradient(135deg, rgba(33, 128, 141, 0.05) 0%, rgba(255, 84, 89, 0.05) 100%);
+            border: 2px solid var(--color-border);
+            border-radius: 8px;
+            padding: 24px;
+            text-align: center;
+            display: none;
+        }
+
+        .results-container.show {
+            display: block;
+        }
+
+        .virality-score {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--color-primary);
+        }
+
+        .virality-label {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .confidence-bar-container {
+            background: #eee;
+            border-radius: 4px;
+            height: 8px;
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+
+        .confidence-bar {
+            height: 100%;
+            background: var(--color-primary);
+            transition: width 300ms ease-out;
+            width: 0%;
+        }
+
+        .probability-text {
+            color: var(--color-text-secondary);
+            font-size: 14px;
+        }
+
+        .model-info {
+            background: #f9f9f9;
+            border-left: 4px solid var(--color-primary);
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: var(--color-text-secondary);
+            display: none;
+            margin-top: 16px;
+        }
+
+        .model-info.show {
+            display: block;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .button-group .btn {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎬 Video Virality Predictor</h1>
+            <p class="subtitle">Neural Network Inference Engine</p>
+        </header>
+
+        <div class="status-section">
+            <div class="status-indicator" id="status-indicator"></div>
+            <span class="status-text" id="status-text">Ready to load model</span>
+        </div>
+
+        <div class="card">
+            <h2>1. Load Trained Model</h2>
+            <div class="form-group">
+                <label class="form-label">Model Path (model.json)</label>
+                <input type="text" id="model-path" class="form-control" placeholder="e.g., ./virality_model/model.json">
+                <small style="color: var(--color-text-secondary); margin-top: 4px; display: block;">
+                    Path to your exported TensorFlow.js model (must have model.weights.bin in same directory)
+                </small>
+            </div>
+            <button class="btn" id="load-btn">Load Model</button>
+            <div class="model-info" id="model-info-container">
+                <strong>Model Info:</strong> <span id="model-params"></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>2. Enter Video Features</h2>
+            <div class="features-grid">
+                <div class="form-group">
+                    <label class="form-label">Title Length</label>
+                    <input type="number" id="title_length" class="form-control" placeholder="0-500" disabled>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description Length</label>
+                    <input type="number" id="description_length" class="form-control" placeholder="0-2000" disabled>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Edge Intensity</label>
+                    <input type="number" id="edge_intensity" class="form-control" placeholder="0-1" step="0.01" disabled>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Color Histogram</label>
+                    <input type="number" id="color_histogram" class="form-control" placeholder="0-1" step="0.01" disabled>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Spectral Entropy</label>
+                    <input type="number" id="spectral_entropy" class="form-control" placeholder="0-1" step="0.01" disabled>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Audio Intensity</label>
+                    <input type="number" id="audio_intensity" class="form-control" placeholder="0-1" step="0.01" disabled>
+                </div>
+            </div>
+            <button class="btn" id="predict-btn" disabled>Make Prediction</button>
+        </div>
+
+        <div class="card">
+            <h2>3. Prediction Results</h2>
+            <div class="results-container" id="results-container">
+                <div class="virality-score" id="virality-score">0%</div>
+                <div class="virality-label" id="virality-label">UNKNOWN</div>
+                <div class="confidence-bar-container">
+                    <div class="confidence-bar" id="confidence-bar"></div>
+                </div>
+                <div class="probability-text" id="probability-text">Probability: 0.0000 (0%)</div>
+                <div class="button-group">
+                    <button class="btn btn-secondary" onclick="app.resetForm()">Clear Form</button>
+                </div>
+            </div>
+            <p style="color: var(--color-text-secondary); font-size: 14px; text-align: center; margin: 0; padding-top: 20px;">
+                Model predictions will appear here
+            </p>
+        </div>
+
+        <footer style="text-align: center; color: var(--color-text-secondary); font-size: 12px; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--color-border);">
+            <p>
+                Make sure your model files (model.json + model.weights.bin) are accessible from the specified path<br>
+                Browser security requires same-origin or CORS-enabled endpoints
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        class ViralityPredictorApp {
+            constructor() {
+                this.model = null;
+                this.modelLoaded = false;
+                this.scaler = {
+                    mean: [0, 0, 0, 0, 0, 0],
+                    std: [1, 1, 1, 1, 1, 1]
+                };
+
+                this.features = [
+                    'title_length',
+                    'description_length',
+                    'edge_intensity',
+                    'color_histogram',
+                    'spectral_entropy',
+                    'audio_intensity'
+                ];
+
+                this.elements = {
+                    modelPathInput: document.getElementById('model-path'),
+                    loadBtn: document.getElementById('load-btn'),
+                    statusText: document.getElementById('status-text'),
+                    statusIndicator: document.getElementById('status-indicator'),
+                    featureInputs: {},
+                    predictBtn: document.getElementById('predict-btn'),
+                    resultsContainer: document.getElementById('results-container'),
+                    viralityScore: document.getElementById('virality-score'),
+                    viralityLabel: document.getElementById('virality-label'),
+                    confidenceBar: document.getElementById('confidence-bar'),
+                    probabilityText: document.getElementById('probability-text'),
+                    modelInfoContainer: document.getElementById('model-info-container'),
+                    modelParams: document.getElementById('model-params')
+                };
+
+                this.features.forEach(feature => {
+                    this.elements.featureInputs[feature] = document.getElementById(feature);
+                });
+
+                this.initEventListeners();
+                this.setDefaultPath();
+            }
+
+            initEventListeners() {
+                this.elements.loadBtn.addEventListener('click', () => this.loadModel());
+                this.elements.predictBtn.addEventListener('click', () => this.predict());
+                
+                this.elements.modelPathInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.loadModel();
+                });
+                
+                this.features.forEach(feature => {
+                    this.elements.featureInputs[feature].addEventListener('input', (e) => {
+                        this.validateInput(e.target);
+                    });
+                });
+            }
+
+            setDefaultPath() {
+                this.elements.modelPathInput.value = './virality_model/model.json';
+            }
+
+            setStatus(type, message) {
+                const indicator = this.elements.statusIndicator;
+                indicator.classList.remove('status--success', 'status--error');
+                
+                if (type === 'success') {
+                    indicator.classList.add('status--success');
+                } else if (type === 'error') {
+                    indicator.classList.add('status--error');
+                }
+                
+                this.elements.statusText.textContent = message;
+            }
+
+            validateInput(input) {
+                const value = parseFloat(input.value);
+                
+                if (isNaN(value)) {
+                    input.style.borderColor = '';
+                    return false;
+                }
+                
+                if (value < 0 || value > 1000) {
+                    input.style.borderColor = '#ff5459';
+                    return false;
+                }
+                
+                input.style.borderColor = '';
+                return true;
+            }
+
+            async loadModel() {
+                const modelPath = this.elements.modelPathInput.value.trim();
+                
+                if (!modelPath) {
+                    this.setStatus('error', 'Please enter model path');
+                    return;
+                }
+
+                try {
+                    this.setStatus('info', `Loading model from: ${modelPath}`);
+                    this.elements.loadBtn.disabled = true;
+
+                    // tf.loadLayersModel() automatically finds model.weights.bin in same directory
+                    this.model = await tf.loadLayersModel(modelPath);
+                    
+                    this.modelLoaded = true;
+                    this.setStatus('success', '✓ Model loaded successfully!');
+                    
+                    this.displayModelInfo();
+                    
+                    this.elements.predictBtn.disabled = false;
+                    this.features.forEach(feature => {
+                        this.elements.featureInputs[feature].disabled = false;
+                    });
+                    
+                } catch (error) {
+                    console.error('Model loading error:', error);
+                    this.setStatus('error', `Failed to load model: ${error.message}`);
+                    this.elements.loadBtn.disabled = false;
+                }
+            }
+
+            displayModelInfo() {
+                const model = this.model;
+                const summary = [];
+                
+                summary.push(`Layers: ${model.layers.length}`);
+                summary.push(`Parameters: ${model.countParams().toLocaleString()}`);
+                
+                this.elements.modelParams.textContent = summary.join(' • ');
+                this.elements.modelInfoContainer.classList.add('show');
+            }
+
+            async predict() {
+                if (!this.modelLoaded) {
+                    this.setStatus('error', 'Model not loaded');
+                    return;
+                }
+
+                try {
+                    const features = [];
+                    for (let i = 0; i < this.features.length; i++) {
+                        const value = parseFloat(this.elements.featureInputs[this.features[i]].value);
+                        
+                        if (isNaN(value)) {
+                            this.setStatus('error', `Invalid input for ${this.features[i]}`);
+                            return;
+                        }
+                        
+                        features.push(value);
+                    }
+
+                    const normalizedFeatures = features.map((value, idx) => {
+                        return (value - this.scaler.mean[idx]) / (this.scaler.std[idx] || 1);
+                    });
+
+                    const inputTensor = tf.tensor2d([normalizedFeatures]);
+                    const prediction = this.model.predict(inputTensor);
+                    const result = await prediction.data();
+                    const probability = result[0];
+
+                    inputTensor.dispose();
+                    prediction.dispose();
+
+                    this.displayResults(probability, features);
+                    this.setStatus('success', 'Prediction complete');
+                    
+                } catch (error) {
+                    console.error('Prediction error:', error);
+                    this.setStatus('error', `Prediction failed: ${error.message}`);
+                }
+            }
+
+            displayResults(probability, features) {
+                const score = Math.round(probability * 100);
+                const isViral = probability > 0.5;
+                
+                this.elements.viralityScore.textContent = score + '%';
+                this.elements.viralityLabel.textContent = isViral ? '✓ VIRAL' : '✗ NOT VIRAL';
+                this.elements.viralityLabel.style.color = isViral ? '#2180a4' : '#ff5459';
+                
+                this.elements.confidenceBar.style.width = score + '%';
+                this.elements.confidenceBar.style.backgroundColor = isViral ? '#2180a4' : '#ff5459';
+                
+                this.elements.probabilityText.textContent = `Probability: ${probability.toFixed(4)} (${score}%)`;
+                
+                this.elements.resultsContainer.classList.add('show');
+                
+                console.log('Prediction:', {
+                    probability: probability.toFixed(4),
+                    score: score,
+                    label: isViral ? 'VIRAL' : 'NOT VIRAL',
+                    features: features
+                });
+            }
+
+            resetForm() {
+                this.features.forEach(feature => {
+                    this.elements.featureInputs[feature].value = '';
+                    this.elements.featureInputs[feature].style.borderColor = '';
+                });
+                this.elements.resultsContainer.classList.remove('show');
+                this.setStatus('info', 'Form reset. Ready for new prediction.');
+            }
+        }
+
+        let app;
+        document.addEventListener('DOMContentLoaded', () => {
+            app = new ViralityPredictorApp();
+        });
+    </script>
+</body>
+</html>
