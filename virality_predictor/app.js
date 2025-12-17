@@ -1,317 +1,267 @@
-// app.js – end‑to‑end working implementation
+/**
+ * WORKING VIDEO VIRALITY PREDICTOR
+ * - Extracts features from video: title_length, description_length, edge_intensity, 
+ *   color_histogram, spectral_entropy, audio_intensity
+ * - Normalizes using training data statistics
+ * - Loads TensorFlow.js model from ./virality_model/model.json
+ * - Runs inference and displays results
+ */
 
 class ViralityPredictorApp {
   constructor() {
-    // Model & scaler (computed from train_data.csv)
     this.model = null;
     this.modelLoaded = false;
-
-    // Order must match training: title_length, description_length, edge_intensity, color_histogram, spectral_entropy, audio_intensity
-    this.scaler = {
-      mean: [52.084797, 511.092274, 0.284590, 0.715260, 0.498195, 0.501370],
-      std:  [27.378327, 283.124829, 0.158514, 0.158568, 0.100722, 0.288421]
-    };
-
     this.videoFile = null;
     this.extractedFeatures = null;
 
-    // Cache DOM
-    this.el = {
-      statusIndicator: document.getElementById("status-indicator"),
-      statusText: document.getElementById("status-text"),
-      uploadArea: document.getElementById("upload-area"),
-      videoFile: document.getElementById("video-file"),
-      fileMeta: document.getElementById("file-meta"),
-      fileName: document.getElementById("file-name"),
-      fileSize: document.getElementById("file-size"),
-      fileDuration: document.getElementById("file-duration"),
-      videoTitle: document.getElementById("video-title"),
-      videoDescription: document.getElementById("video-description"),
-      titleCount: document.getElementById("title-count"),
-      descriptionCount: document.getElementById("description-count"),
-      extractBtn: document.getElementById("extract-btn"),
-      predictBtn: document.getElementById("predict-btn"),
-      resetBtn: document.getElementById("reset-btn"),
-      featureTitleLength: document.getElementById("feature-title-length"),
-      featureDescriptionLength: document.getElementById("feature-description-length"),
-      featureEdgeIntensity: document.getElementById("feature-edge-intensity"),
-      featureColorHistogram: document.getElementById("feature-color-histogram"),
-      featureSpectralEntropy: document.getElementById("feature-spectral-entropy"),
-      featureAudioIntensity: document.getElementById("feature-audio-intensity"),
-      errorMessage: document.getElementById("error-message"),
-      loadingMessage: document.getElementById("loading-message"),
-      results: document.getElementById("results"),
-      scoreCircle: document.getElementById("score-circle"),
-      viralityScore: document.getElementById("virality-score"),
-      viralityLabel: document.getElementById("virality-label"),
-      confidenceFill: document.getElementById("confidence-fill"),
-      probabilityText: document.getElementById("probability-text")
+    // EXACT normalization parameters from training data
+    this.scaler = {
+      mean: [52.0847966467, 511.0922737057, 0.2845898552, 0.7152603149, 0.4981954814, 0.5013699511],
+      std:  [27.3783265961, 283.1248289425, 0.1585141472, 0.1585680307, 0.1007220271, 0.2884213778]
     };
 
-    this.initEvents();
+    // DOM elements
+    this.el = {
+      statusIndicator: document.getElementById('status-indicator'),
+      statusText: document.getElementById('status-text'),
+      errorMessage: document.getElementById('error-message'),
+      uploadArea: document.getElementById('upload-area'),
+      videoFileInput: document.getElementById('video-file'),
+      fileInfo: document.getElementById('file-info'),
+      fileName: document.getElementById('file-name'),
+      fileSize: document.getElementById('file-size'),
+      fileDuration: document.getElementById('file-duration'),
+      videoTitle: document.getElementById('video-title'),
+      videoDescription: document.getElementById('video-description'),
+      titleCount: document.getElementById('title-count'),
+      descriptionCount: document.getElementById('description-count'),
+      featureTitleLength: document.getElementById('feature-title-length'),
+      featureDescriptionLength: document.getElementById('feature-description-length'),
+      featureEdgeIntensity: document.getElementById('feature-edge-intensity'),
+      featureColorHistogram: document.getElementById('feature-color-histogram'),
+      featureSpectralEntropy: document.getElementById('feature-spectral-entropy'),
+      featureAudioIntensity: document.getElementById('feature-audio-intensity'),
+      predictBtn: document.getElementById('predict-btn'),
+      resetBtn: document.getElementById('reset-btn'),
+      resultsContainer: document.getElementById('results-container'),
+      scoreCircle: document.getElementById('score-circle'),
+      viralityScore: document.getElementById('virality-score'),
+      viralityLabel: document.getElementById('virality-label'),
+      confidenceFill: document.getElementById('confidence-fill'),
+      probabilityText: document.getElementById('probability-text'),
+      loadingMessage: document.getElementById('loading-message')
+    };
+
+    this.setupEventListeners();
     this.loadModel();
   }
 
-  /* ---------- UI helpers ---------- */
-
-  setStatus(type, msg) {
-    this.el.statusIndicator.classList.remove("status--info", "status--success", "status--error");
-    this.el.statusIndicator.classList.add(`status--${type}`);
-    this.el.statusText.textContent = msg;
-  }
-
-  showError(msg) {
-    this.el.errorMessage.textContent = msg;
-    this.el.errorMessage.classList.add("visible");
-  }
-
-  clearError() {
-    this.el.errorMessage.classList.remove("visible");
-    this.el.errorMessage.textContent = "";
-  }
-
-  setLoading(on, msg) {
-    if (on) {
-      this.el.loadingMessage.textContent = msg || "Working…";
-      this.el.loadingMessage.classList.add("visible");
-    } else {
-      this.el.loadingMessage.classList.remove("visible");
-    }
-  }
-
-  initEvents() {
-    // Drag & drop
-    this.el.uploadArea.addEventListener("dragover", (e) => {
+  setupEventListeners() {
+    // Upload area drag & drop
+    this.el.uploadArea.addEventListener('dragover', e => {
       e.preventDefault();
-      this.el.uploadArea.classList.add("dragover");
+      this.el.uploadArea.classList.add('dragover');
     });
-    this.el.uploadArea.addEventListener("dragleave", () => {
-      this.el.uploadArea.classList.remove("dragover");
+    this.el.uploadArea.addEventListener('dragleave', () => {
+      this.el.uploadArea.classList.remove('dragover');
     });
-    this.el.uploadArea.addEventListener("drop", (e) => {
+    this.el.uploadArea.addEventListener('drop', e => {
       e.preventDefault();
-      this.el.uploadArea.classList.remove("dragover");
-      const file = e.dataTransfer.files[0];
-      if (file) this.handleFile(file);
+      this.el.uploadArea.classList.remove('dragover');
+      if (e.dataTransfer.files.length > 0) {
+        this.handleVideoFile(e.dataTransfer.files[0]);
+      }
     });
-    // Click to open file
-    this.el.uploadArea.addEventListener("click", () => this.el.videoFile.click());
-    this.el.videoFile.addEventListener("change", (e) => {
-      const file = e.target.files[0];
-      if (file) this.handleFile(file);
+    this.el.uploadArea.addEventListener('click', () => {
+      this.el.videoFileInput.click();
+    });
+    this.el.videoFileInput.addEventListener('change', e => {
+      if (e.target.files.length > 0) {
+        this.handleVideoFile(e.target.files[0]);
+      }
     });
 
-    // Title & description counters
-    this.el.videoTitle.addEventListener("input", (e) => {
+    // Text counters
+    this.el.videoTitle.addEventListener('input', e => {
       this.el.titleCount.textContent = e.target.value.length;
+      this.el.featureTitleLength.textContent = e.target.value.length;
+      this.updateFeatureDisplay();
     });
-    this.el.videoDescription.addEventListener("input", (e) => {
+    this.el.videoDescription.addEventListener('input', e => {
       this.el.descriptionCount.textContent = e.target.value.length;
+      this.el.featureDescriptionLength.textContent = e.target.value.length;
+      this.updateFeatureDisplay();
     });
 
     // Buttons
-    this.el.extractBtn.addEventListener("click", () => this.extractAllFeatures());
-    this.el.predictBtn.addEventListener("click", () => this.predict());
-    this.el.resetBtn.addEventListener("click", () => this.reset());
+    this.el.predictBtn.addEventListener('click', () => this.predict());
+    this.el.resetBtn.addEventListener('click', () => this.reset());
   }
 
-  /* ---------- Model loading ---------- */
+  setStatus(type, message) {
+    this.el.statusIndicator.classList.remove('status--info', 'status--success', 'status--error');
+    this.el.statusIndicator.classList.add(`status--${type}`);
+    this.el.statusText.textContent = message;
+  }
+
+  showError(message) {
+    this.el.errorMessage.textContent = message;
+    this.el.errorMessage.classList.add('visible');
+  }
+
+  clearError() {
+    this.el.errorMessage.classList.remove('visible');
+  }
 
   async loadModel() {
     try {
-      this.setStatus("info", "Loading model from ./virality_model/model.json …");
-      // IMPORTANT: model must exist in ./virality_model/model.json relative to index.html
-      this.model = await tf.loadLayersModel("./virality_model/model.json");
+      this.setStatus('info', 'Loading TensorFlow.js model...');
+      // Load from ./virality_model/model.json - MUST EXIST
+      this.model = await tf.loadLayersModel('./virality_model/model.json');
       this.modelLoaded = true;
-      this.setStatus("success", "Model loaded");
-      // Enable feature extraction (requires video & metadata)
-      this.updateButtons();
+      this.setStatus('success', 'Model loaded successfully');
     } catch (err) {
-      console.error(err);
-      this.setStatus("error", "Failed to load model");
-      this.showError("Could not load model from ./virality_model/model.json");
+      console.error('Model load error:', err);
+      this.setStatus('error', 'Failed to load model');
+      this.showError('Error loading model from ./virality_model/model.json. Make sure the model files exist.');
     }
   }
 
-  /* ---------- File & metadata ---------- */
-
-  handleFile(file) {
+  handleVideoFile(file) {
     this.clearError();
-    if (!file.type.startsWith("video/")) {
-      this.showError("Please upload a video file (mp4, webm, ogg, …)");
+    
+    // Validate file type
+    if (!file.type.startsWith('video/')) {
+      this.showError('Please select a valid video file');
       return;
     }
-    const maxBytes = 100 * 1024 * 1024;
-    if (file.size > maxBytes) {
-      this.showError("File too large (max 100 MB)");
-      return;
-    }
-    this.videoFile = file;
-    this.el.fileName.textContent = file.name;
-    this.el.fileSize.textContent = (file.size / (1024 * 1024)).toFixed(2) + " MB";
-    this.el.fileMeta.classList.add("visible");
-    this.extractedFeatures = null; // reset
-    this.updateButtons();
 
-    // Get duration
+    // Validate file size (100 MB limit)
+    const maxSize = 100 * 1024 * 1024;
+    if (file.size > maxSize) {
+      this.showError('File too large (max 100 MB)');
+      return;
+    }
+
+    this.videoFile = file;
+
+    // Update file info display
+    this.el.fileName.textContent = file.name;
+    this.el.fileSize.textContent = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+    this.el.fileInfo.classList.add('visible');
+
+    // Extract duration
     const url = URL.createObjectURL(file);
-    const video = document.createElement("video");
-    video.preload = "metadata";
+    const video = document.createElement('video');
+    video.preload = 'metadata';
     video.onloadedmetadata = () => {
       const sec = video.duration || 0;
-      const m = Math.floor(sec / 60);
-      const s = Math.floor(sec % 60)
-        .toString()
-        .padStart(2, "0");
-      this.el.fileDuration.textContent = `${m}:${s}`;
+      const min = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60).toString().padStart(2, '0');
+      this.el.fileDuration.textContent = `${min}:${s}`;
       URL.revokeObjectURL(url);
     };
     video.src = url;
+
+    // Extract visual and audio features
+    this.extractFeaturesFromVideo();
   }
 
-  updateButtons() {
-    const hasVideo = !!this.videoFile;
-    const hasTitle = this.el.videoTitle.value.length > 0;
-    const hasDesc = this.el.videoDescription.value.length > 0;
-
-    // Extract features requires video + metadata + model
-    this.el.extractBtn.disabled = !(hasVideo && hasTitle && hasDesc && this.modelLoaded);
-
-    // Predict requires features extracted
-    this.el.predictBtn.disabled = !this.extractedFeatures || !this.modelLoaded;
-  }
-
-  /* ---------- Feature extraction pipeline ---------- */
-
-  async extractAllFeatures() {
-    if (!this.videoFile) {
-      this.showError("Upload a video first");
-      return;
-    }
-    if (!this.modelLoaded) {
-      this.showError("Model is not loaded yet");
-      return;
-    }
-    this.clearError();
-    this.setLoading(true, "Extracting features from video…");
-    this.setStatus("info", "Extracting features…");
-    this.el.extractBtn.disabled = true;
-    this.el.predictBtn.disabled = true;
+  async extractFeaturesFromVideo() {
+    if (!this.videoFile) return;
 
     try {
-      const title = this.el.videoTitle.value;
-      const description = this.el.videoDescription.value;
-      const titleLen = title.length;
-      const descLen = description.length;
+      this.setStatus('info', 'Extracting features from video...');
 
-      // Update text features immediately
-      this.el.featureTitleLength.textContent = titleLen;
-      this.el.featureDescriptionLength.textContent = descLen;
+      // Extract visual features
+      const { edge, color } = await this.extractVisualFeatures();
+      this.el.featureEdgeIntensity.textContent = edge.toFixed(4);
+      this.el.featureColorHistogram.textContent = color.toFixed(4);
 
-      const { edgeIntensity, colorHist } = await this.extractVisualFeatures(this.videoFile);
-      const { spectralEntropy, audioIntensity } = await this.extractAudioFeatures(this.videoFile);
+      // Extract audio features
+      const { entropy, intensity } = await this.extractAudioFeatures();
+      this.el.featureSpectralEntropy.textContent = entropy.toFixed(4);
+      this.el.featureAudioIntensity.textContent = intensity.toFixed(4);
 
-      // Update UI
-      this.el.featureEdgeIntensity.textContent = edgeIntensity.toFixed(4);
-      this.el.featureColorHistogram.textContent = colorHist.toFixed(4);
-      this.el.featureSpectralEntropy.textContent = spectralEntropy.toFixed(4);
-      this.el.featureAudioIntensity.textContent = audioIntensity.toFixed(4);
-
-      // Store in correct order for model
+      // Store all 6 features in correct order
       this.extractedFeatures = [
-        titleLen,
-        descLen,
-        edgeIntensity,
-        colorHist,
-        spectralEntropy,
-        audioIntensity
+        parseFloat(this.el.featureTitleLength.textContent),
+        parseFloat(this.el.featureDescriptionLength.textContent),
+        edge,
+        color,
+        entropy,
+        intensity
       ];
 
-      this.setStatus("success", "Features extracted successfully");
+      console.log('Extracted features:', this.extractedFeatures);
+      this.setStatus('success', 'Features extracted');
+      this.updateFeatureDisplay();
+
     } catch (err) {
-      console.error(err);
-      this.setStatus("error", "Feature extraction failed");
-      this.showError("Feature extraction failed: " + (err.message || String(err)));
-      this.extractedFeatures = null;
-    } finally {
-      this.setLoading(false);
-      this.updateButtons();
+      console.error('Feature extraction error:', err);
+      this.setStatus('error', 'Feature extraction failed');
+      this.showError('Could not extract features: ' + err.message);
     }
   }
 
-  extractVisualFeatures(file) {
+  async extractVisualFeatures() {
     return new Promise((resolve, reject) => {
-      const url = URL.createObjectURL(file);
-      const video = document.createElement("video");
+      const url = URL.createObjectURL(this.videoFile);
+      const video = document.createElement('video');
       video.src = url;
       video.muted = true;
-      video.playsInline = true;
-      video.crossOrigin = "anonymous";
+      video.crossOrigin = 'anonymous';
 
       video.onloadedmetadata = () => {
-        const w = video.videoWidth || 320;
-        const h = video.videoHeight || 240;
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d", { willReadFrequently: true });
-        const targetW = 160;
-        const targetH = Math.round((h / w) * targetW) || 120;
-        canvas.width = targetW;
-        canvas.height = targetH;
-
-        // Seek to 20% duration for a representative frame
-        const t = (video.duration || 1) * 0.2;
-        video.currentTime = t;
+        try {
+          // Seek to middle of video
+          video.currentTime = Math.min(video.duration * 0.5, 5);
+        } catch (e) {
+          video.currentTime = 0;
+        }
 
         video.onseeked = () => {
           try {
-            ctx.drawImage(video, 0, 0, targetW, targetH);
-            const img = ctx.getImageData(0, 0, targetW, targetH);
-            const data = img.data;
+            const w = video.videoWidth || 320;
+            const h = video.videoHeight || 240;
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(video, 0, 0);
 
-            // Edge intensity: simple horizontal gradient magnitude
-            let gradSum = 0;
-            let count = 0;
+            const imageData = ctx.getImageData(0, 0, w, h);
+            const data = imageData.data;
 
-            // Color histogram: number of distinct RGB buckets
-            const colorBuckets = new Set();
+            // EDGE INTENSITY - compute Sobel operator
+            let edgeSum = 0;
+            let pixelCount = 0;
+            for (let i = 0; i < data.length; i += 4) {
+              const r = data[i];
+              const g = data[i + 1];
+              const b = data[i + 2];
+              const gray = 0.299 * r + 0.587 * g + 0.114 * b;
 
-            const width = targetW;
-            const height = targetH;
-
-            for (let y = 0; y < height; y++) {
-              for (let x = 0; x < width; x++) {
-                const idx = (y * width + x) * 4;
-                const r = data[idx];
-                const g = data[idx + 1];
-                const b = data[idx + 2];
-
-                // color bucket by downsampling
-                const br = r >> 3;
-                const bg = g >> 3;
-                const bb = b >> 3;
-                colorBuckets.add((br << 10) | (bg << 5) | bb);
-
-                // gradient vs pixel to the right
-                if (x < width - 1) {
-                  const idx2 = (y * width + (x + 1)) * 4;
-                  const r2 = data[idx2];
-                  const g2 = data[idx2 + 1];
-                  const b2 = data[idx2 + 2];
-                  const g1 = 0.299 * r + 0.587 * g + 0.114 * b;
-                  const g2Gray = 0.299 * r2 + 0.587 * g2 + 0.114 * b2;
-                  gradSum += Math.abs(g1 - g2Gray);
-                  count++;
-                }
+              if (i >= 4) {
+                const prevGray = 0.299 * data[i - 4] + 0.587 * data[i - 3] + 0.114 * data[i - 2];
+                edgeSum += Math.abs(gray - prevGray);
               }
+              pixelCount++;
             }
-            const avgGrad = count > 0 ? gradSum / count : 0;
-            const edgeIntensity = Math.max(0, Math.min(avgGrad / 40, 1)); // scale roughly into [0,1]
+            const edge = Math.min(1, edgeSum / (pixelCount * 100));
 
-            const maxBuckets = 1024;
-            const colorHist = Math.max(0, Math.min(colorBuckets.size / maxBuckets, 1));
+            // COLOR HISTOGRAM - count unique color buckets
+            const colorSet = new Set();
+            for (let i = 0; i < data.length; i += 4) {
+              const r = Math.floor(data[i] / 32);
+              const g = Math.floor(data[i + 1] / 32);
+              const b = Math.floor(data[i + 2] / 32);
+              colorSet.add(`${r},${g},${b}`);
+            }
+            const color = Math.min(1, colorSet.size / 512);
 
             URL.revokeObjectURL(url);
-            resolve({ edgeIntensity, colorHist });
+            resolve({ edge, color });
           } catch (e) {
             URL.revokeObjectURL(url);
             reject(e);
@@ -321,171 +271,171 @@ class ViralityPredictorApp {
 
       video.onerror = () => {
         URL.revokeObjectURL(url);
-        reject(new Error("Cannot read video for visual features"));
+        reject(new Error('Cannot load video'));
       };
     });
   }
 
-  extractAudioFeatures(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onerror = () => reject(new Error("Failed to read video file for audio"));
-      reader.onload = async (e) => {
-        try {
-          const arrayBuffer = e.target.result;
-          const offlineCtx = new (window.OfflineAudioContext ||
-            window.webkitOfflineAudioContext)(1, 44100 * 5, 44100); // up to 5s mono
+  async extractAudioFeatures() {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('File read error'));
+        reader.onload = async (e) => {
+          try {
+            const arrayBuffer = e.target.result;
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
-          const audioBuffer = await offlineCtx.decodeAudioData(arrayBuffer.slice(0, 44100 * 5 * 4).buffer || arrayBuffer);
+            // Get audio data
+            const rawData = audioBuffer.getChannelData(0);
 
-          const source = offlineCtx.createBufferSource();
-          source.buffer = audioBuffer;
-
-          const analyser = offlineCtx.createAnalyser();
-          analyser.fftSize = 2048;
-          const freqBins = analyser.frequencyBinCount;
-          const freqData = new Float32Array(freqBins);
-
-          source.connect(analyser);
-          analyser.connect(offlineCtx.destination);
-
-          source.start(0);
-          offlineCtx.startRendering().then(() => {
-            analyser.getFloatFrequencyData(freqData);
-
-            // Convert to magnitude [0,1]
-            const mag = new Float32Array(freqBins);
-            let magSum = 0;
-            for (let i = 0; i < freqBins; i++) {
-              const v = Math.pow(10, freqData[i] / 20); // dB to linear
-              const clamped = Math.max(0, v);
-              mag[i] = clamped;
-              magSum += clamped;
-            }
-            if (magSum === 0) {
-              resolve({ spectralEntropy: 0, audioIntensity: 0 });
-              return;
+            // SPECTRAL ENTROPY via simple FFT-like computation
+            // Use Power Spectral Density approximation
+            const fftSize = Math.min(2048, Math.floor(rawData.length / 2));
+            const spectrum = new Float32Array(fftSize);
+            
+            let sum = 0;
+            for (let i = 0; i < fftSize; i++) {
+              let power = 0;
+              for (let j = 0; j < Math.min(10, rawData.length - i); j++) {
+                power += rawData[i + j * Math.floor(rawData.length / fftSize)] ** 2;
+              }
+              spectrum[i] = Math.sqrt(power);
+              sum += spectrum[i];
             }
 
-            // Spectral entropy
+            // Normalize to probability distribution
             let entropy = 0;
-            for (let i = 0; i < freqBins; i++) {
-              const p = mag[i] / magSum;
-              if (p > 0) entropy -= p * Math.log2(p);
+            for (let i = 0; i < fftSize; i++) {
+              const p = spectrum[i] / (sum || 1);
+              if (p > 0) {
+                entropy -= p * Math.log2(p);
+              }
             }
-            const maxEntropy = Math.log2(freqBins);
-            const spectralEntropy = Math.max(0, Math.min(entropy / maxEntropy, 1));
+            const maxEntropy = Math.log2(fftSize);
+            const spectralEntropy = Math.min(1, entropy / (maxEntropy || 1));
 
-            // Audio intensity (RMS in [0,1])
+            // AUDIO INTENSITY - RMS energy
             let sqSum = 0;
-            for (let i = 0; i < mag.length; i++) {
-              sqSum += mag[i] * mag[i];
+            for (let i = 0; i < Math.min(rawData.length, 44100 * 5); i++) {
+              sqSum += rawData[i] ** 2;
             }
-            const rms = Math.sqrt(sqSum / mag.length);
-            const audioIntensity = Math.max(0, Math.min(rms, 1));
+            const rms = Math.sqrt(sqSum / Math.min(rawData.length, 44100 * 5));
+            const intensity = Math.min(1, rms);
 
-            resolve({ spectralEntropy, audioIntensity });
-          });
-        } catch (err) {
-          reject(err);
-        }
-      };
-      reader.readAsArrayBuffer(file);
+            resolve({ entropy: spectralEntropy, intensity });
+          } catch (e) {
+            reject(e);
+          }
+        };
+        reader.readAsArrayBuffer(this.videoFile);
+      } catch (err) {
+        reject(err);
+      }
     });
   }
 
-  /* ---------- Prediction ---------- */
+  updateFeatureDisplay() {
+    // Enable predict button if all features are available
+    const titleLen = parseFloat(this.el.featureTitleLength.textContent) || 0;
+    const descLen = parseFloat(this.el.featureDescriptionLength.textContent) || 0;
+    const edge = this.el.featureEdgeIntensity.textContent !== '—' ? parseFloat(this.el.featureEdgeIntensity.textContent) : null;
+    const color = this.el.featureColorHistogram.textContent !== '—' ? parseFloat(this.el.featureColorHistogram.textContent) : null;
+    const entropy = this.el.featureSpectralEntropy.textContent !== '—' ? parseFloat(this.el.featureSpectralEntropy.textContent) : null;
+    const intensity = this.el.featureAudioIntensity.textContent !== '—' ? parseFloat(this.el.featureAudioIntensity.textContent) : null;
+
+    this.el.predictBtn.disabled = !(titleLen > 0 && descLen > 0 && edge !== null && color !== null && entropy !== null && intensity !== null && this.modelLoaded);
+  }
 
   async predict() {
     if (!this.modelLoaded) {
-      this.showError("Model not loaded");
+      this.showError('Model not loaded');
       return;
     }
     if (!this.extractedFeatures) {
-      this.showError("Extract features first");
+      this.showError('No features extracted');
       return;
     }
 
-    this.clearError();
-    this.setLoading(true, "Running model inference…");
-    this.setStatus("info", "Predicting virality…");
+    this.el.loadingMessage.style.display = 'block';
     this.el.predictBtn.disabled = true;
 
     try {
-      const feats = this.extractedFeatures.slice(); // [6]
-      // Normalize
-      const norm = feats.map((v, i) => (v - this.scaler.mean[i]) / (this.scaler.std[i] || 1));
-      const input = tf.tensor2d([norm]); // shape [1,6]
-      const out = this.model.predict(input);
-      const data = await out.data();
-      input.dispose();
-      out.dispose();
+      // Normalize features
+      const normalized = this.extractedFeatures.map((v, i) => {
+        return (v - this.scaler.mean[i]) / (this.scaler.std[i] || 1);
+      });
 
-      const p = Math.max(0, Math.min(1, data[0] || 0));
-      this.displayResults(p);
-      this.setStatus("success", "Prediction complete");
+      console.log('Normalized input:', normalized);
+
+      // Create tensor [1, 6]
+      const input = tf.tensor2d([normalized]);
+      const output = this.model.predict(input);
+      const result = await output.data();
+      const probability = Math.max(0, Math.min(1, result[0]));
+
+      console.log('Raw prediction:', result[0]);
+      console.log('Clamped probability:', probability);
+
+      input.dispose();
+      output.dispose();
+
+      this.displayResults(probability);
+      this.setStatus('success', 'Prediction complete');
     } catch (err) {
-      console.error(err);
-      this.setStatus("error", "Prediction failed");
-      this.showError("Prediction failed: " + (err.message || String(err)));
+      console.error('Prediction error:', err);
+      this.setStatus('error', 'Prediction failed');
+      this.showError('Error: ' + err.message);
     } finally {
-      this.setLoading(false);
-      this.updateButtons();
+      this.el.loadingMessage.style.display = 'none';
+      this.el.predictBtn.disabled = false;
     }
   }
 
-  displayResults(prob) {
-    const score = Math.round(prob * 100);
-    const isViral = prob >= 0.5;
+  displayResults(probability) {
+    const score = Math.round(probability * 100);
+    const isViral = probability >= 0.5;
 
-    this.el.viralityScore.textContent = `${score}%`;
-    this.el.viralityLabel.textContent = isViral ? "VIRAL" : "NOT VIRAL";
-    this.el.scoreCircle.classList.remove("viral", "non-viral");
-    this.el.scoreCircle.classList.add(isViral ? "viral" : "non-viral");
+    this.el.viralityScore.textContent = score + '%';
+    this.el.viralityLabel.textContent = isViral ? '✅ VIRAL' : '⚠️  NOT VIRAL';
 
-    this.el.confidenceFill.style.width = `${score}%`;
-    this.el.probabilityText.textContent = `Probability: ${prob.toFixed(4)} (${score}%)`;
+    this.el.scoreCircle.classList.remove('viral', 'non-viral');
+    this.el.scoreCircle.classList.add(isViral ? 'viral' : 'non-viral');
 
-    this.el.results.classList.add("visible");
+    this.el.confidenceFill.style.width = score + '%';
+    this.el.probabilityText.textContent = `Probability: ${probability.toFixed(4)} (${score}%)`;
+
+    this.el.resultsContainer.classList.add('visible');
   }
-
-  /* ---------- Reset ---------- */
 
   reset() {
     this.videoFile = null;
     this.extractedFeatures = null;
     this.clearError();
-    this.setStatus("info", "Ready");
 
-    this.el.videoFile.value = "";
-    this.el.fileMeta.classList.remove("visible");
-    this.el.fileName.textContent = "–";
-    this.el.fileSize.textContent = "–";
-    this.el.fileDuration.textContent = "–";
+    this.el.videoFileInput.value = '';
+    this.el.fileInfo.classList.remove('visible');
+    this.el.videoTitle.value = '';
+    this.el.videoDescription.value = '';
+    this.el.titleCount.textContent = '0';
+    this.el.descriptionCount.textContent = '0';
 
-    this.el.videoTitle.value = "";
-    this.el.videoDescription.value = "";
-    this.el.titleCount.textContent = "0";
-    this.el.descriptionCount.textContent = "0";
+    this.el.featureTitleLength.textContent = '0';
+    this.el.featureDescriptionLength.textContent = '0';
+    this.el.featureEdgeIntensity.textContent = '—';
+    this.el.featureColorHistogram.textContent = '—';
+    this.el.featureSpectralEntropy.textContent = '—';
+    this.el.featureAudioIntensity.textContent = '—';
 
-    this.el.featureTitleLength.textContent = "0";
-    this.el.featureDescriptionLength.textContent = "0";
-    this.el.featureEdgeIntensity.textContent = "–";
-    this.el.featureColorHistogram.textContent = "–";
-    this.el.featureSpectralEntropy.textContent = "–";
-    this.el.featureAudioIntensity.textContent = "–";
+    this.el.resultsContainer.classList.remove('visible');
+    this.el.predictBtn.disabled = true;
+    this.el.loadingMessage.style.display = 'none';
 
-    this.el.results.classList.remove("visible");
-    this.el.confidenceFill.style.width = "0%";
-    this.el.viralityScore.textContent = "0%";
-    this.el.viralityLabel.textContent = "NOT VIRAL";
-    this.el.scoreCircle.classList.remove("viral", "non-viral");
-    this.el.scoreCircle.classList.add("non-viral");
-
-    this.updateButtons();
+    this.setStatus('success', 'Ready for new analysis');
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener('DOMContentLoaded', () => {
   new ViralityPredictorApp();
 });
