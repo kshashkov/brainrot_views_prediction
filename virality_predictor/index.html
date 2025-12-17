@@ -177,43 +177,6 @@
 
         .file-info.show { display: block; }
 
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            margin-top: 16px;
-        }
-
-        .feature-card {
-            background: rgba(33, 128, 141, 0.05);
-            border: 1px solid rgba(33, 128, 141, 0.2);
-            border-radius: 6px;
-            padding: 12px;
-            text-align: center;
-            position: relative;
-        }
-
-        .feature-label {
-            font-size: 12px;
-            color: var(--color-text-secondary);
-            margin-bottom: 4px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .feature-value {
-            font-size: 20px;
-            font-weight: 600;
-            color: var(--color-primary);
-        }
-
-        .feature-warning {
-            font-size: 11px;
-            color: var(--color-warning);
-            margin-top: 4px;
-            font-weight: 500;
-        }
-
         .results-container {
             background: linear-gradient(135deg, rgba(33, 128, 141, 0.05) 0%, rgba(255, 84, 89, 0.05) 100%);
             border: 2px solid var(--color-border);
@@ -252,22 +215,8 @@
 
         .button-group .btn { flex: 1; }
 
-        .validation-note {
-            background: rgba(249, 115, 22, 0.08);
-            border: 1px solid rgba(249, 115, 22, 0.2);
-            border-radius: 6px;
-            padding: 12px;
-            font-size: 12px;
-            color: var(--color-text-secondary);
-            margin-top: 12px;
-            display: none;
-        }
-
-        .validation-note.show { display: block; }
-
         @media (max-width: 600px) {
             h1 { font-size: 24px; }
-            .features-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -317,48 +266,16 @@
             </div>
         </div>
 
-        <!-- Features -->
+        <!-- Analysis Button -->
         <div class="card">
-            <h2>3. Extracted Features</h2>
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-label">Title Length</div>
-                    <div class="feature-value" id="feat-title_length">0</div>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-label">Description Length</div>
-                    <div class="feature-value" id="feat-description_length">0</div>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-label">Edge Intensity</div>
-                    <div class="feature-value" id="feat-edge_intensity">-</div>
-                    <div class="feature-warning" id="warn-edge_intensity"></div>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-label">Color Histogram</div>
-                    <div class="feature-value" id="feat-color_histogram">-</div>
-                    <div class="feature-warning" id="warn-color_histogram"></div>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-label">Spectral Entropy</div>
-                    <div class="feature-value" id="feat-spectral_entropy">-</div>
-                    <div class="feature-warning" id="warn-spectral_entropy"></div>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-label">Audio Intensity</div>
-                    <div class="feature-value" id="feat-audio_intensity">-</div>
-                    <div class="feature-warning" id="warn-audio_intensity"></div>
-                </div>
-            </div>
-            <div class="validation-note" id="validation-note"></div>
-            <button class="btn" id="predict-btn" disabled style="width: 100%; margin-top: 16px;">
+            <button class="btn" id="predict-btn" disabled style="width: 100%; margin-top: 0;">
                 Analyze Video
             </button>
         </div>
 
         <!-- Results -->
         <div class="card">
-            <h2>4. Virality Prediction</h2>
+            <h2>3. Virality Prediction</h2>
             <div class="results-container" id="results-container">
                 <div class="virality-score" id="virality-score">0%</div>
                 <div class="virality-label" id="virality-label">ANALYZING</div>
@@ -408,16 +325,8 @@
                     viralityScore: document.getElementById('virality-score'),
                     viralityLabel: document.getElementById('virality-label'),
                     confidenceBar: document.getElementById('confidence-bar'),
-                    probabilityText: document.getElementById('probability-text'),
-                    validationNote: document.getElementById('validation-note'),
-                    featureDisplays: {},
-                    featureWarnings: {}
+                    probabilityText: document.getElementById('probability-text')
                 };
-
-                this.features.forEach(feat => {
-                    this.elements.featureDisplays[feat] = document.getElementById(`feat-${feat}`);
-                    this.elements.featureWarnings[feat] = document.getElementById(`warn-${feat}`);
-                });
 
                 this.initEventListeners();
                 this.loadModelOnStartup();
@@ -494,7 +403,6 @@
 
             async extractVideoFeatures() {
                 this.setStatus('info', 'Extracting features from video...');
-                this.clearWarnings();
 
                 try {
                     const videoURL = URL.createObjectURL(this.videoFile);
@@ -544,7 +452,6 @@
                         audio_intensity: this.validateFeature(audioFeatures.audioIntensity, 'audio_intensity')
                     };
 
-                    this.updateFeatureDisplay();
                     this.setStatus('success', '✓ Features extracted - Ready to analyze');
                     this.elements.predictBtn.disabled = false;
 
@@ -559,7 +466,6 @@
             validateFeature(value, featureName) {
                 if (!isFinite(value) || value === null || value === undefined) {
                     console.warn(`Feature ${featureName} is invalid (${value}), replacing with 0`);
-                    this.showWarning(featureName, 'Defaulted to 0');
                     return 0;
                 }
                 
@@ -568,20 +474,6 @@
                     console.warn(`Feature ${featureName} clamped from ${value} to ${clamped}`);
                 }
                 return clamped;
-            }
-
-            showWarning(featureName, message) {
-                if (this.elements.featureWarnings[featureName]) {
-                    this.elements.featureWarnings[featureName].textContent = `⚠ ${message}`;
-                }
-            }
-
-            clearWarnings() {
-                this.features.forEach(feat => {
-                    if (this.elements.featureWarnings[feat]) {
-                        this.elements.featureWarnings[feat].textContent = '';
-                    }
-                });
             }
 
             calculateEdgeIntensity(canvas) {
@@ -761,17 +653,7 @@
                 }
             }
 
-            updateFeatureDisplay() {
-                this.elements.featureDisplays['title_length'].textContent = this.elements.videoTitle.value.length;
-                this.elements.featureDisplays['description_length'].textContent = this.elements.videoDescription.value.length;
-                this.elements.featureDisplays['edge_intensity'].textContent = this.videoFeatures?.edge_intensity?.toFixed(4) || '-';
-                this.elements.featureDisplays['color_histogram'].textContent = this.videoFeatures?.color_histogram?.toFixed(4) || '-';
-                this.elements.featureDisplays['spectral_entropy'].textContent = this.videoFeatures?.spectral_entropy?.toFixed(4) || '-';
-                this.elements.featureDisplays['audio_intensity'].textContent = this.videoFeatures?.audio_intensity?.toFixed(4) || '-';
-            }
-
             updateFeatures() {
-                this.updateFeatureDisplay();
                 this.elements.predictBtn.disabled = !(this.videoFile && this.videoFeatures);
             }
 
@@ -864,9 +746,7 @@
                 this.elements.descCount.textContent = '0';
                 this.elements.fileInfo.classList.remove('show');
                 this.elements.resultsContainer.classList.remove('show');
-                this.elements.validationNote.classList.remove('show');
-                this.clearWarnings();
-                this.updateFeatureDisplay();
+                this.updateFeatures();
                 this.setStatus('success', '✓ Ready for new video');
             }
         }
