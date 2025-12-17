@@ -15,6 +15,7 @@
             --color-text: #134252;
             --color-text-secondary: #626c71;
             --color-border: rgba(94, 82, 64, 0.2);
+            --color-warning: #f97316;
         }
 
         * { box-sizing: border-box; }
@@ -52,10 +53,11 @@
         }
         .status-indicator.status--success { background: var(--color-success); animation: none; }
         .status-indicator.status--error { background: var(--color-error); animation: none; }
+        .status-indicator.status--warning { background: var(--color-warning); animation: none; }
 
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-        .status-text { flex: 1; color: var(--color-text-secondary); }
+        .status-text { flex: 1; color: var(--color-text-secondary); font-size: 13px; }
 
         .card {
             background: var(--color-surface);
@@ -188,6 +190,7 @@
             border-radius: 6px;
             padding: 12px;
             text-align: center;
+            position: relative;
         }
 
         .feature-label {
@@ -202,6 +205,13 @@
             font-size: 20px;
             font-weight: 600;
             color: var(--color-primary);
+        }
+
+        .feature-warning {
+            font-size: 11px;
+            color: var(--color-warning);
+            margin-top: 4px;
+            font-weight: 500;
         }
 
         .results-container {
@@ -241,6 +251,19 @@
         }
 
         .button-group .btn { flex: 1; }
+
+        .validation-note {
+            background: rgba(249, 115, 22, 0.08);
+            border: 1px solid rgba(249, 115, 22, 0.2);
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 12px;
+            color: var(--color-text-secondary);
+            margin-top: 12px;
+            display: none;
+        }
+
+        .validation-note.show { display: block; }
 
         @media (max-width: 600px) {
             h1 { font-size: 24px; }
@@ -309,20 +332,25 @@
                 <div class="feature-card">
                     <div class="feature-label">Edge Intensity</div>
                     <div class="feature-value" id="feat-edge_intensity">-</div>
+                    <div class="feature-warning" id="warn-edge_intensity"></div>
                 </div>
                 <div class="feature-card">
                     <div class="feature-label">Color Histogram</div>
                     <div class="feature-value" id="feat-color_histogram">-</div>
+                    <div class="feature-warning" id="warn-color_histogram"></div>
                 </div>
                 <div class="feature-card">
                     <div class="feature-label">Spectral Entropy</div>
                     <div class="feature-value" id="feat-spectral_entropy">-</div>
+                    <div class="feature-warning" id="warn-spectral_entropy"></div>
                 </div>
                 <div class="feature-card">
                     <div class="feature-label">Audio Intensity</div>
                     <div class="feature-value" id="feat-audio_intensity">-</div>
+                    <div class="feature-warning" id="warn-audio_intensity"></div>
                 </div>
             </div>
+            <div class="validation-note" id="validation-note"></div>
             <button class="btn" id="predict-btn" disabled style="width: 100%; margin-top: 16px;">
                 Analyze Video
             </button>
@@ -381,11 +409,14 @@
                     viralityLabel: document.getElementById('virality-label'),
                     confidenceBar: document.getElementById('confidence-bar'),
                     probabilityText: document.getElementById('probability-text'),
-                    featureDisplays: {}
+                    validationNote: document.getElementById('validation-note'),
+                    featureDisplays: {},
+                    featureWarnings: {}
                 };
 
                 this.features.forEach(feat => {
                     this.elements.featureDisplays[feat] = document.getElementById(`feat-${feat}`);
+                    this.elements.featureWarnings[feat] = document.getElementById(`warn-${feat}`);
                 });
 
                 this.initEventListeners();
@@ -422,9 +453,10 @@
 
             setStatus(type, message) {
                 const indicator = this.elements.statusIndicator;
-                indicator.classList.remove('status--success', 'status--error');
+                indicator.classList.remove('status--success', 'status--error', 'status--warning');
                 if (type === 'success') indicator.classList.add('status--success');
                 else if (type === 'error') indicator.classList.add('status--error');
+                else if (type === 'warning') indicator.classList.add('status--warning');
                 this.elements.statusText.textContent = message;
             }
 
@@ -462,16 +494,10 @@
 
             async extractVideoFeatures() {
                 this.setStatus('info', 'Extracting features from video...');
+                this.clearWarnings();
 
                 try {
                     const videoURL = URL.createObjectURL(this.videoFile);
-                    const ac = new (window.AudioContext || window.webkitAudioContext)();
-                    
-                    // Fetch and decode audio
-                    const audioBuffer = await fetch(videoURL)
-                        .then(res => res.arrayBuffer())
-                        .then(buf => ac.decodeAudioData(buf));
-                    
                     const video = document.createElement('video');
                     video.src = videoURL;
                     video.crossOrigin = 'anonymous';
@@ -483,7 +509,7 @@
                     });
 
                     // Extract visual features
-                    const frameCount = Math.min(5, Math.floor(video.duration));
+                    const frameCount = Math.min(5, Math.floor(video.duration) || 1);
                     const edgeIntensities = [];
                     const colorHistograms = [];
 
@@ -500,18 +526,22 @@
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                        edgeIntensities.push(this.calculateEdgeIntensity(canvas));
-                        colorHistograms.push(this.calculateColorHistogram(canvas));
+                        const edge = this.calculateEdgeIntensity(canvas);
+                        const color = this.calculateColorHistogram(canvas);
+                        
+                        if (isFinite(edge)) edgeIntensities.push(edge);
+                        if (isFinite(color)) colorHistograms.push(color);
                     }
 
                     // Extract audio features
-                    const audioFeatures = this.extractAudioFeatures(audioBuffer);
+                    const audioFeatures = await this.extractAudioFeatures(videoURL, video);
 
+                    // Build feature object with validation
                     this.videoFeatures = {
-                        edge_intensity: Math.min(1, edgeIntensities.reduce((a, b) => a + b, 0) / edgeIntensities.length),
-                        color_histogram: Math.min(1, colorHistograms.reduce((a, b) => a + b, 0) / colorHistograms.length),
-                        spectral_entropy: audioFeatures.spectralEntropy,
-                        audio_intensity: audioFeatures.audioIntensity
+                        edge_intensity: this.validateFeature(edgeIntensities.length > 0 ? Math.min(1, edgeIntensities.reduce((a, b) => a + b, 0) / edgeIntensities.length) : 0, 'edge_intensity'),
+                        color_histogram: this.validateFeature(colorHistograms.length > 0 ? Math.min(1, colorHistograms.reduce((a, b) => a + b, 0) / colorHistograms.length) : 0, 'color_histogram'),
+                        spectral_entropy: this.validateFeature(audioFeatures.spectralEntropy, 'spectral_entropy'),
+                        audio_intensity: this.validateFeature(audioFeatures.audioIntensity, 'audio_intensity')
                     };
 
                     this.updateFeatureDisplay();
@@ -526,130 +556,209 @@
                 }
             }
 
-            calculateEdgeIntensity(canvas) {
-                const ctx = canvas.getContext('2d');
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const data = imageData.data;
-
-                let edgeSum = 0;
-                const width = canvas.width;
-                const height = canvas.height;
-
-                for (let i = 1; i < height - 1; i++) {
-                    for (let j = 1; j < width - 1; j++) {
-                        let gx = 0, gy = 0;
-                        
-                        for (let dy = -1; dy <= 1; dy++) {
-                            for (let dx = -1; dx <= 1; dx++) {
-                                const pidx = ((i + dy) * width + (j + dx)) * 4;
-                                const gray = (data[pidx] + data[pidx + 1] + data[pidx + 2]) / 3;
-                                const sobelX = [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]];
-                                const sobelY = [[-1, -2, -1], [0, 0, 0], [1, 2, 1]];
-                                gx += gray * sobelX[dy + 1][dx + 1];
-                                gy += gray * sobelY[dy + 1][dx + 1];
-                            }
-                        }
-
-                        edgeSum += Math.sqrt(gx * gx + gy * gy) / 255;
-                    }
+            validateFeature(value, featureName) {
+                if (!isFinite(value) || value === null || value === undefined) {
+                    console.warn(`Feature ${featureName} is invalid (${value}), replacing with 0`);
+                    this.showWarning(featureName, 'Defaulted to 0');
+                    return 0;
                 }
+                
+                const clamped = Math.max(0, Math.min(1, value));
+                if (clamped !== value) {
+                    console.warn(`Feature ${featureName} clamped from ${value} to ${clamped}`);
+                }
+                return clamped;
+            }
 
-                return edgeSum / ((width - 2) * (height - 2));
+            showWarning(featureName, message) {
+                if (this.elements.featureWarnings[featureName]) {
+                    this.elements.featureWarnings[featureName].textContent = `⚠ ${message}`;
+                }
+            }
+
+            clearWarnings() {
+                this.features.forEach(feat => {
+                    if (this.elements.featureWarnings[feat]) {
+                        this.elements.featureWarnings[feat].textContent = '';
+                    }
+                });
+            }
+
+            calculateEdgeIntensity(canvas) {
+                try {
+                    const ctx = canvas.getContext('2d');
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const data = imageData.data;
+
+                    let edgeSum = 0;
+                    const width = canvas.width;
+                    const height = canvas.height;
+
+                    for (let i = 1; i < height - 1; i++) {
+                        for (let j = 1; j < width - 1; j++) {
+                            let gx = 0, gy = 0;
+                            
+                            for (let dy = -1; dy <= 1; dy++) {
+                                for (let dx = -1; dx <= 1; dx++) {
+                                    const pidx = ((i + dy) * width + (j + dx)) * 4;
+                                    const gray = (data[pidx] + data[pidx + 1] + data[pidx + 2]) / 3;
+                                    const sobelX = [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]];
+                                    const sobelY = [[-1, -2, -1], [0, 0, 0], [1, 2, 1]];
+                                    gx += gray * sobelX[dy + 1][dx + 1];
+                                    gy += gray * sobelY[dy + 1][dx + 1];
+                                }
+                            }
+
+                            edgeSum += Math.sqrt(gx * gx + gy * gy) / 255;
+                        }
+                    }
+
+                    return edgeSum / ((width - 2) * (height - 2));
+                } catch (e) {
+                    console.error('Edge intensity calculation error:', e);
+                    return 0;
+                }
             }
 
             calculateColorHistogram(canvas) {
-                const ctx = canvas.getContext('2d');
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const data = imageData.data;
+                try {
+                    const ctx = canvas.getContext('2d');
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const data = imageData.data;
 
-                let rSum = 0, gSum = 0, bSum = 0;
-                const pixelCount = canvas.width * canvas.height;
+                    let rSum = 0, gSum = 0, bSum = 0;
+                    const pixelCount = canvas.width * canvas.height;
 
-                for (let i = 0; i < data.length; i += 4) {
-                    rSum += data[i];
-                    gSum += data[i + 1];
-                    bSum += data[i + 2];
+                    for (let i = 0; i < data.length; i += 4) {
+                        rSum += data[i];
+                        gSum += data[i + 1];
+                        bSum += data[i + 2];
+                    }
+
+                    const rMean = rSum / pixelCount;
+                    const gMean = gSum / pixelCount;
+                    const bMean = bSum / pixelCount;
+
+                    let variance = 0;
+                    for (let i = 0; i < data.length; i += 4) {
+                        variance += Math.pow(data[i] - rMean, 2) + Math.pow(data[i + 1] - gMean, 2) + Math.pow(data[i + 2] - bMean, 2);
+                    }
+
+                    return Math.sqrt(variance) / (pixelCount * 3) / 255;
+                } catch (e) {
+                    console.error('Color histogram calculation error:', e);
+                    return 0;
                 }
-
-                const rMean = rSum / pixelCount;
-                const gMean = gSum / pixelCount;
-                const bMean = bSum / pixelCount;
-
-                let variance = 0;
-                for (let i = 0; i < data.length; i += 4) {
-                    variance += Math.pow(data[i] - rMean, 2) + Math.pow(data[i + 1] - gMean, 2) + Math.pow(data[i + 2] - bMean, 2);
-                }
-
-                return Math.sqrt(variance) / (pixelCount * 3) / 255;
             }
 
-            extractAudioFeatures(audioBuffer) {
-                const raw = audioBuffer.getChannelData(0);
-                const windowSize = 1024;
-                const hop = 512;
-                let frameCount = 0;
-                let rmsSum = 0;
-                let entropySum = 0;
-
-                for (let start = 0; start + windowSize <= raw.length; start += hop) {
-                    const window = raw.slice(start, start + windowSize);
+            async extractAudioFeatures(videoURL, video) {
+                try {
+                    const ac = new (window.AudioContext || window.webkitAudioContext)();
                     
-                    // RMS
-                    let rms = 0;
-                    for (let i = 0; i < window.length; i++) rms += window[i] * window[i];
-                    rmsSum += Math.sqrt(rms / window.length);
+                    const audioBuffer = await fetch(videoURL)
+                        .then(res => res.arrayBuffer())
+                        .then(buf => ac.decodeAudioData(buf))
+                        .catch(e => {
+                            console.warn('Audio decode failed, using silent fallback:', e);
+                            return null;
+                        });
 
-                    // FFT-based entropy
-                    const fftSize = windowSize;
-                    const re = new Float32Array(fftSize);
-                    const im = new Float32Array(fftSize);
-                    re.set(window);
-
-                    // Simple Cooley-Tukey FFT
-                    let j = 0;
-                    for (let i = 0; i < fftSize; i++) {
-                        if (i < j) {
-                            const tr = re[i]; re[i] = re[j]; re[j] = tr;
-                            const ti = im[i]; im[i] = im[j]; im[j] = ti;
-                        }
-                        let m = fftSize >> 1;
-                        while (m >= 1 && j >= m) { j -= m; m >>= 1; }
-                        j += m;
+                    if (!audioBuffer) {
+                        return { audio_intensity: 0, spectralEntropy: 0 };
                     }
 
-                    for (let s = 1; s <= Math.log2(fftSize); s++) {
-                        const m = 1 << s;
-                        const m2 = m >> 1;
-                        const wAngle = (-2 * Math.PI) / m;
-                        for (let k = 0; k < fftSize; k += m) {
-                            for (let i = 0; i < m2; i++) {
-                                const wr = Math.cos(wAngle * i);
-                                const wi = Math.sin(wAngle * i);
-                                const tr = wr * re[k + i + m2] - wi * im[k + i + m2];
-                                const ti = wr * im[k + i + m2] + wi * re[k + i + m2];
-                                re[k + i + m2] = re[k + i] - tr;
-                                im[k + i + m2] = im[k + i] - ti;
-                                re[k + i] += tr;
-                                im[k + i] += ti;
+                    const raw = audioBuffer.getChannelData(0);
+                    if (!raw || raw.length === 0) {
+                        return { audio_intensity: 0, spectralEntropy: 0 };
+                    }
+
+                    const windowSize = 1024;
+                    const hop = 512;
+                    let frameCount = 0;
+                    let rmsSum = 0;
+                    let entropySum = 0;
+
+                    for (let start = 0; start + windowSize <= raw.length; start += hop) {
+                        const window = raw.slice(start, start + windowSize);
+                        
+                        // Calculate RMS
+                        let rms = 0;
+                        for (let i = 0; i < window.length; i++) rms += window[i] * window[i];
+                        rms = Math.sqrt(rms / window.length);
+                        rmsSum += rms;
+
+                        // FFT and entropy
+                        const fftSize = windowSize;
+                        const re = new Float32Array(fftSize);
+                        const im = new Float32Array(fftSize);
+                        re.set(window);
+
+                        // Cooley-Tukey FFT
+                        let j = 0;
+                        for (let i = 0; i < fftSize; i++) {
+                            if (i < j) {
+                                const tr = re[i]; re[i] = re[j]; re[j] = tr;
+                                const ti = im[i]; im[i] = im[j]; im[j] = ti;
+                            }
+                            let m = fftSize >> 1;
+                            while (m >= 1 && j >= m) { j -= m; m >>= 1; }
+                            j += m;
+                        }
+
+                        for (let s = 1; s <= Math.log2(fftSize); s++) {
+                            const m = 1 << s;
+                            const m2 = m >> 1;
+                            const wAngle = (-2 * Math.PI) / m;
+                            for (let k = 0; k < fftSize; k += m) {
+                                for (let i = 0; i < m2; i++) {
+                                    const wr = Math.cos(wAngle * i);
+                                    const wi = Math.sin(wAngle * i);
+                                    const tr = wr * re[k + i + m2] - wi * im[k + i + m2];
+                                    const ti = wr * im[k + i + m2] + wi * re[k + i + m2];
+                                    re[k + i + m2] = re[k + i] - tr;
+                                    im[k + i + m2] = im[k + i] - ti;
+                                    re[k + i] += tr;
+                                    im[k + i] += ti;
+                                }
                             }
                         }
+
+                        // Calculate entropy
+                        let entropy = 0;
+                        let magSum = 0;
+                        for (let i = 0; i < fftSize / 2; i++) {
+                            const mag = Math.sqrt(re[i] * re[i] + im[i] * im[i]);
+                            magSum += mag;
+                        }
+                        
+                        if (magSum > 0) {
+                            for (let i = 0; i < fftSize / 2; i++) {
+                                const mag = Math.sqrt(re[i] * re[i] + im[i] * im[i]);
+                                const norm = mag / magSum;
+                                if (norm > 1e-10) entropy -= norm * Math.log2(norm);
+                            }
+                        }
+                        
+                        entropySum += entropy;
+                        frameCount++;
                     }
 
-                    // Calculate entropy
-                    let entropy = 0;
-                    for (let i = 0; i < fftSize / 2; i++) {
-                        const mag = Math.sqrt(re[i] * re[i] + im[i] * im[i]);
-                        const norm = mag / (fftSize / 2);
-                        if (norm > 0) entropy -= norm * Math.log2(norm);
+                    if (frameCount === 0) {
+                        return { audio_intensity: 0, spectralEntropy: 0 };
                     }
-                    entropySum += entropy;
-                    frameCount++;
+
+                    const avgAudioIntensity = rmsSum / frameCount;
+                    const avgSpectralEntropy = entropySum / frameCount / Math.log2(windowSize);
+
+                    return {
+                        audio_intensity: Math.max(0, Math.min(1, avgAudioIntensity)),
+                        spectralEntropy: Math.max(0, Math.min(1, avgSpectralEntropy))
+                    };
+
+                } catch (error) {
+                    console.error('Audio extraction error:', error);
+                    return { audio_intensity: 0, spectralEntropy: 0 };
                 }
-
-                return {
-                    audio_intensity: Math.min(1, (rmsSum / frameCount) * 2),
-                    spectralEntropy: frameCount > 0 ? Math.min(1, entropySum / frameCount / Math.log2(windowSize)) : 0
-                };
             }
 
             updateFeatureDisplay() {
@@ -690,14 +799,30 @@
                         this.videoFeatures.audio_intensity
                     ];
 
+                    // Validate all features before model input
+                    for (let i = 0; i < features.length; i++) {
+                        if (!isFinite(features[i])) {
+                            console.warn(`Feature ${i} is invalid (${features[i]}), replacing with 0`);
+                            features[i] = 0;
+                        }
+                    }
+
                     const normalizedFeatures = features.map((value, idx) => {
-                        return (value - this.scaler.mean[idx]) / (this.scaler.std[idx] || 1);
+                        const normalized = (value - this.scaler.mean[idx]) / (this.scaler.std[idx] || 1);
+                        return isFinite(normalized) ? normalized : 0;
                     });
 
                     const inputTensor = tf.tensor2d([normalizedFeatures]);
                     const prediction = this.model.predict(inputTensor);
                     const result = await prediction.data();
-                    const probability = result[0];
+                    let probability = result[0];
+
+                    // Validate model output
+                    if (!isFinite(probability)) {
+                        throw new Error(`Model produced invalid output: ${probability}`);
+                    }
+
+                    probability = Math.max(0, Math.min(1, probability));
 
                     inputTensor.dispose();
                     prediction.dispose();
@@ -739,6 +864,8 @@
                 this.elements.descCount.textContent = '0';
                 this.elements.fileInfo.classList.remove('show');
                 this.elements.resultsContainer.classList.remove('show');
+                this.elements.validationNote.classList.remove('show');
+                this.clearWarnings();
                 this.updateFeatureDisplay();
                 this.setStatus('success', '✓ Ready for new video');
             }
