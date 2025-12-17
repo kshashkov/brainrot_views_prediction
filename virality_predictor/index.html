@@ -17,10 +17,7 @@
             --color-border: rgba(94, 82, 64, 0.2);
         }
 
-        * {
-            box-sizing: border-box;
-        }
-
+        * { box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: var(--color-bg);
@@ -30,27 +27,11 @@
             line-height: 1.5;
         }
 
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-        }
-
-        header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        h1 {
-            margin: 0 0 10px 0;
-            font-size: 32px;
-            font-weight: 600;
-        }
-
-        .subtitle {
-            color: var(--color-text-secondary);
-            font-size: 16px;
-        }
-
+        .container { max-width: 900px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 30px; }
+        h1 { margin: 0 0 10px 0; font-size: 32px; font-weight: 600; }
+        .subtitle { color: var(--color-text-secondary); font-size: 16px; }
+        
         .status-section {
             background: var(--color-surface);
             border: 1px solid var(--color-border);
@@ -69,26 +50,12 @@
             background: #ccc;
             animation: pulse 2s infinite;
         }
+        .status-indicator.status--success { background: var(--color-success); animation: none; }
+        .status-indicator.status--error { background: var(--color-error); animation: none; }
 
-        .status-indicator.status--success {
-            background: var(--color-success);
-            animation: none;
-        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-        .status-indicator.status--error {
-            background: var(--color-error);
-            animation: none;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .status-text {
-            flex: 1;
-            color: var(--color-text-secondary);
-        }
+        .status-text { flex: 1; color: var(--color-text-secondary); }
 
         .card {
             background: var(--color-surface);
@@ -105,10 +72,7 @@
             color: var(--color-text);
         }
 
-        .form-group {
-            margin-bottom: 16px;
-        }
-
+        .form-group { margin-bottom: 16px; }
         .form-label {
             display: block;
             margin-bottom: 8px;
@@ -160,10 +124,6 @@
             transform: translateY(-1px);
         }
 
-        .btn:active:not(:disabled) {
-            transform: translateY(0);
-        }
-
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
@@ -198,25 +158,10 @@
             background: rgba(33, 128, 141, 0.1);
         }
 
-        .file-upload-area input {
-            display: none;
-        }
-
-        .upload-icon {
-            font-size: 48px;
-            margin-bottom: 12px;
-        }
-
-        .upload-text {
-            color: var(--color-text);
-            font-weight: 500;
-            margin-bottom: 4px;
-        }
-
-        .upload-hint {
-            color: var(--color-text-secondary);
-            font-size: 13px;
-        }
+        .file-upload-area input { display: none; }
+        .upload-icon { font-size: 48px; margin-bottom: 12px; }
+        .upload-text { color: var(--color-text); font-weight: 500; margin-bottom: 4px; }
+        .upload-hint { color: var(--color-text-secondary); font-size: 13px; }
 
         .file-info {
             background: rgba(33, 128, 141, 0.08);
@@ -228,9 +173,7 @@
             display: none;
         }
 
-        .file-info.show {
-            display: block;
-        }
+        .file-info.show { display: block; }
 
         .features-grid {
             display: grid;
@@ -270,23 +213,10 @@
             display: none;
         }
 
-        .results-container.show {
-            display: block;
-        }
-
-        .virality-score {
-            font-size: 48px;
-            font-weight: 700;
-            margin-bottom: 8px;
-            color: var(--color-primary);
-        }
-
-        .virality-label {
-            font-size: 24px;
-            font-weight: 600;
-            margin-bottom: 16px;
-        }
-
+        .results-container.show { display: block; }
+        .virality-score { font-size: 48px; font-weight: 700; margin-bottom: 8px; color: var(--color-primary); }
+        .virality-label { font-size: 24px; font-weight: 600; margin-bottom: 16px; }
+        
         .confidence-bar-container {
             background: #eee;
             border-radius: 4px;
@@ -302,10 +232,7 @@
             width: 0%;
         }
 
-        .probability-text {
-            color: var(--color-text-secondary);
-            font-size: 14px;
-        }
+        .probability-text { color: var(--color-text-secondary); font-size: 14px; }
 
         .button-group {
             display: flex;
@@ -313,22 +240,11 @@
             margin-top: 16px;
         }
 
-        .button-group .btn {
-            flex: 1;
-        }
-
-        .hidden {
-            display: none;
-        }
+        .button-group .btn { flex: 1; }
 
         @media (max-width: 600px) {
-            h1 {
-                font-size: 24px;
-            }
-
-            .features-grid {
-                grid-template-columns: 1fr;
-            }
+            h1 { font-size: 24px; }
+            .features-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -344,7 +260,7 @@
             <span class="status-text" id="status-text">Loading model...</span>
         </div>
 
-        <!-- Video Upload Section -->
+        <!-- Video Upload -->
         <div class="card">
             <h2>1. Upload Video File</h2>
             <div class="file-upload-area" id="upload-area">
@@ -359,7 +275,7 @@
             </div>
         </div>
 
-        <!-- Metadata Section -->
+        <!-- Metadata -->
         <div class="card">
             <h2>2. Enter Video Metadata</h2>
             <div class="form-group">
@@ -378,10 +294,10 @@
             </div>
         </div>
 
-        <!-- Extracted Features Section -->
+        <!-- Features -->
         <div class="card">
             <h2>3. Extracted Features</h2>
-            <div class="features-grid" id="features-display">
+            <div class="features-grid">
                 <div class="feature-card">
                     <div class="feature-label">Title Length</div>
                     <div class="feature-value" id="feat-title_length">0</div>
@@ -412,7 +328,7 @@
             </button>
         </div>
 
-        <!-- Results Section -->
+        <!-- Results -->
         <div class="card">
             <h2>4. Virality Prediction</h2>
             <div class="results-container" id="results-container">
@@ -444,20 +360,9 @@
                 this.videoFile = null;
                 this.videoFeatures = null;
                 
-                this.scaler = {
-                    mean: [0, 0, 0, 0, 0, 0],
-                    std: [1, 1, 1, 1, 1, 1]
-                };
-
-                this.features = [
-                    'title_length',
-                    'description_length',
-                    'edge_intensity',
-                    'color_histogram',
-                    'spectral_entropy',
-                    'audio_intensity'
-                ];
-
+                this.scaler = { mean: [0, 0, 0, 0, 0, 0], std: [1, 1, 1, 1, 1, 1] };
+                this.features = ['title_length', 'description_length', 'edge_intensity', 'color_histogram', 'spectral_entropy', 'audio_intensity'];
+                
                 this.elements = {
                     statusIndicator: document.getElementById('status-indicator'),
                     statusText: document.getElementById('status-text'),
@@ -488,57 +393,38 @@
             }
 
             initEventListeners() {
-                this.elements.uploadArea.addEventListener('click', () => {
-                    this.elements.videoFile.click();
-                });
-
+                this.elements.uploadArea.addEventListener('click', () => this.elements.videoFile.click());
                 this.elements.uploadArea.addEventListener('dragover', (e) => {
                     e.preventDefault();
                     this.elements.uploadArea.classList.add('dragover');
                 });
-
                 this.elements.uploadArea.addEventListener('dragleave', () => {
                     this.elements.uploadArea.classList.remove('dragover');
                 });
-
                 this.elements.uploadArea.addEventListener('drop', (e) => {
                     e.preventDefault();
                     this.elements.uploadArea.classList.remove('dragover');
-                    const files = e.dataTransfer.files;
-                    if (files.length > 0) {
-                        this.handleFileSelect(files[0]);
-                    }
+                    if (e.dataTransfer.files.length > 0) this.handleFileSelect(e.dataTransfer.files[0]);
                 });
-
                 this.elements.videoFile.addEventListener('change', (e) => {
-                    if (e.target.files.length > 0) {
-                        this.handleFileSelect(e.target.files[0]);
-                    }
+                    if (e.target.files.length > 0) this.handleFileSelect(e.target.files[0]);
                 });
-
                 this.elements.videoTitle.addEventListener('input', (e) => {
                     this.elements.titleCount.textContent = e.target.value.length;
                     this.updateFeatures();
                 });
-
                 this.elements.videoDescription.addEventListener('input', (e) => {
                     this.elements.descCount.textContent = e.target.value.length;
                     this.updateFeatures();
                 });
-
                 this.elements.predictBtn.addEventListener('click', () => this.predict());
             }
 
             setStatus(type, message) {
                 const indicator = this.elements.statusIndicator;
                 indicator.classList.remove('status--success', 'status--error');
-                
-                if (type === 'success') {
-                    indicator.classList.add('status--success');
-                } else if (type === 'error') {
-                    indicator.classList.add('status--error');
-                }
-                
+                if (type === 'success') indicator.classList.add('status--success');
+                else if (type === 'error') indicator.classList.add('status--error');
                 this.elements.statusText.textContent = message;
             }
 
@@ -579,6 +465,13 @@
 
                 try {
                     const videoURL = URL.createObjectURL(this.videoFile);
+                    const ac = new (window.AudioContext || window.webkitAudioContext)();
+                    
+                    // Fetch and decode audio
+                    const audioBuffer = await fetch(videoURL)
+                        .then(res => res.arrayBuffer())
+                        .then(buf => ac.decodeAudioData(buf));
+                    
                     const video = document.createElement('video');
                     video.src = videoURL;
                     video.crossOrigin = 'anonymous';
@@ -589,13 +482,13 @@
                         video.load();
                     });
 
+                    // Extract visual features
                     const frameCount = Math.min(5, Math.floor(video.duration));
                     const edgeIntensities = [];
                     const colorHistograms = [];
 
                     for (let i = 0; i < frameCount; i++) {
-                        const frameTime = (i / frameCount) * video.duration;
-                        video.currentTime = frameTime;
+                        video.currentTime = (i / frameCount) * video.duration;
                         
                         await new Promise(resolve => {
                             video.addEventListener('seeked', resolve, { once: true });
@@ -607,21 +500,16 @@
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                        const edgeIntensity = this.calculateEdgeIntensity(canvas);
-                        edgeIntensities.push(edgeIntensity);
-
-                        const colorHistogram = this.calculateColorHistogram(canvas);
-                        colorHistograms.push(colorHistogram);
+                        edgeIntensities.push(this.calculateEdgeIntensity(canvas));
+                        colorHistograms.push(this.calculateColorHistogram(canvas));
                     }
 
-                    const avgEdgeIntensity = edgeIntensities.reduce((a, b) => a + b, 0) / edgeIntensities.length;
-                    const avgColorHistogram = colorHistograms.reduce((a, b) => a + b, 0) / colorHistograms.length;
-
-                    const audioFeatures = await this.extractAudioFeatures();
+                    // Extract audio features
+                    const audioFeatures = this.extractAudioFeatures(audioBuffer);
 
                     this.videoFeatures = {
-                        edge_intensity: Math.min(1, avgEdgeIntensity),
-                        color_histogram: Math.min(1, avgColorHistogram),
+                        edge_intensity: Math.min(1, edgeIntensities.reduce((a, b) => a + b, 0) / edgeIntensities.length),
+                        color_histogram: Math.min(1, colorHistograms.reduce((a, b) => a + b, 0) / colorHistograms.length),
                         spectral_entropy: audioFeatures.spectralEntropy,
                         audio_intensity: audioFeatures.audioIntensity
                     };
@@ -662,8 +550,7 @@
                             }
                         }
 
-                        const magnitude = Math.sqrt(gx * gx + gy * gy) / 255;
-                        edgeSum += magnitude;
+                        edgeSum += Math.sqrt(gx * gx + gy * gy) / 255;
                     }
                 }
 
@@ -690,145 +577,93 @@
 
                 let variance = 0;
                 for (let i = 0; i < data.length; i += 4) {
-                    variance += Math.pow(data[i] - rMean, 2);
-                    variance += Math.pow(data[i + 1] - gMean, 2);
-                    variance += Math.pow(data[i + 2] - bMean, 2);
+                    variance += Math.pow(data[i] - rMean, 2) + Math.pow(data[i + 1] - gMean, 2) + Math.pow(data[i + 2] - bMean, 2);
                 }
 
                 return Math.sqrt(variance) / (pixelCount * 3) / 255;
             }
 
-            async extractAudioFeatures() {
-                return new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = async (e) => {
-                        try {
-                            const ac = new (window.AudioContext || window.webkitAudioContext)();
-                            const audioBuffer = await ac.decodeAudioData(e.target.result);
-                            const raw = audioBuffer.getChannelData(0);
-                            const totalSamples = raw.length;
+            extractAudioFeatures(audioBuffer) {
+                const raw = audioBuffer.getChannelData(0);
+                const windowSize = 1024;
+                const hop = 512;
+                let frameCount = 0;
+                let rmsSum = 0;
+                let entropySum = 0;
 
-                            if (!totalSamples) {
-                                resolve({ spectral_entropy: 0, audio_intensity: 0 });
-                                return;
-                            }
+                for (let start = 0; start + windowSize <= raw.length; start += hop) {
+                    const window = raw.slice(start, start + windowSize);
+                    
+                    // RMS
+                    let rms = 0;
+                    for (let i = 0; i < window.length; i++) rms += window[i] * window[i];
+                    rmsSum += Math.sqrt(rms / window.length);
 
-                            const windowSize = 1024;
-                            const hop = 512;
-                            let frameCount = 0;
-                            let rmsSum = 0;
-                            let entropySum = 0;
+                    // FFT-based entropy
+                    const fftSize = windowSize;
+                    const re = new Float32Array(fftSize);
+                    const im = new Float32Array(fftSize);
+                    re.set(window);
 
-                            const fftSize = windowSize;
-                            const re = new Float32Array(fftSize);
-                            const im = new Float32Array(fftSize);
-
-                            const fft = (signal) => {
-                                re.set(signal);
-                                im.fill(0);
-                                const n = fftSize;
-                                let j = 0;
-                                for (let i = 0; i < n; i++) {
-                                    if (i < j) {
-                                        const tr = re[i];
-                                        re[i] = re[j];
-                                        re[j] = tr;
-                                        const ti = im[i];
-                                        im[i] = im[j];
-                                        im[j] = ti;
-                                    }
-                                    let m = n >> 1;
-                                    while (m >= 1 && j >= m) {
-                                        j -= m;
-                                        m >>= 1;
-                                    }
-                                    j += m;
-                                }
-                                for (let s = 1; s <= Math.log2(n); s++) {
-                                    const m = 1 << s;
-                                    const m2 = m >> 1;
-                                    const wAngle = (-2 * Math.PI) / m;
-                                    for (let k = 0; k < n; k += m) {
-                                        for (let i = 0; i < m2; i++) {
-                                            const tIndex = k + i + m2;
-                                            const uIndex = k + i;
-                                            const wr = Math.cos(wAngle * i);
-                                            const wi = Math.sin(wAngle * i);
-                                            const tr = wr * re[tIndex] - wi * im[tIndex];
-                                            const ti = wr * im[tIndex] + wi * re[tIndex];
-                                            re[tIndex] = re[uIndex] - tr;
-                                            im[tIndex] = im[uIndex] - ti;
-                                            re[uIndex] += tr;
-                                            im[uIndex] += ti;
-                                        }
-                                    }
-                                }
-                            };
-
-                            for (let start = 0; start + windowSize <= totalSamples; start += hop) {
-                                const window = raw.slice(start, start + windowSize);
-                                let rms = 0;
-                                for (let i = 0; i < window.length; i++) {
-                                    rms += window[i] * window[i];
-                                }
-                                rms = Math.sqrt(rms / window.length);
-                                rmsSum += rms;
-
-                                fft(window);
-                                let magnitude = 0;
-                                for (let i = 0; i < fftSize / 2; i++) {
-                                    magnitude = Math.sqrt(re[i] * re[i] + im[i] * im[i]);
-                                }
-                                
-                                let entropy = 0;
-                                for (let i = 0; i < fftSize / 2; i++) {
-                                    const mag = Math.sqrt(re[i] * re[i] + im[i] * im[i]);
-                                    const norm = mag / (fftSize / 2);
-                                    if (norm > 0) {
-                                        entropy -= norm * Math.log2(norm);
-                                    }
-                                }
-                                entropySum += entropy;
-                                frameCount++;
-                            }
-
-                            const avgAudioIntensity = Math.min(1, (rmsSum / frameCount) * 2);
-                            const avgSpectralEntropy = frameCount > 0 ? Math.min(1, entropySum / frameCount / Math.log2(fftSize)) : 0;
-
-                            resolve({
-                                spectral_entropy: avgSpectralEntropy,
-                                audio_intensity: avgAudioIntensity
-                            });
-                        } catch (err) {
-                            console.error('Audio extraction error:', err);
-                            resolve({ spectral_entropy: 0, audio_intensity: 0 });
+                    // Simple Cooley-Tukey FFT
+                    let j = 0;
+                    for (let i = 0; i < fftSize; i++) {
+                        if (i < j) {
+                            const tr = re[i]; re[i] = re[j]; re[j] = tr;
+                            const ti = im[i]; im[i] = im[j]; im[j] = ti;
                         }
-                    };
-                    reader.onerror = () => {
-                        console.error('FileReader error');
-                        resolve({ spectral_entropy: 0, audio_intensity: 0 });
-                    };
-                    reader.readAsArrayBuffer(this.videoFile);
-                });
+                        let m = fftSize >> 1;
+                        while (m >= 1 && j >= m) { j -= m; m >>= 1; }
+                        j += m;
+                    }
+
+                    for (let s = 1; s <= Math.log2(fftSize); s++) {
+                        const m = 1 << s;
+                        const m2 = m >> 1;
+                        const wAngle = (-2 * Math.PI) / m;
+                        for (let k = 0; k < fftSize; k += m) {
+                            for (let i = 0; i < m2; i++) {
+                                const wr = Math.cos(wAngle * i);
+                                const wi = Math.sin(wAngle * i);
+                                const tr = wr * re[k + i + m2] - wi * im[k + i + m2];
+                                const ti = wr * im[k + i + m2] + wi * re[k + i + m2];
+                                re[k + i + m2] = re[k + i] - tr;
+                                im[k + i + m2] = im[k + i] - ti;
+                                re[k + i] += tr;
+                                im[k + i] += ti;
+                            }
+                        }
+                    }
+
+                    // Calculate entropy
+                    let entropy = 0;
+                    for (let i = 0; i < fftSize / 2; i++) {
+                        const mag = Math.sqrt(re[i] * re[i] + im[i] * im[i]);
+                        const norm = mag / (fftSize / 2);
+                        if (norm > 0) entropy -= norm * Math.log2(norm);
+                    }
+                    entropySum += entropy;
+                    frameCount++;
+                }
+
+                return {
+                    audio_intensity: Math.min(1, (rmsSum / frameCount) * 2),
+                    spectralEntropy: frameCount > 0 ? Math.min(1, entropySum / frameCount / Math.log2(windowSize)) : 0
+                };
             }
 
             updateFeatureDisplay() {
                 this.elements.featureDisplays['title_length'].textContent = this.elements.videoTitle.value.length;
                 this.elements.featureDisplays['description_length'].textContent = this.elements.videoDescription.value.length;
-                this.elements.featureDisplays['edge_intensity'].textContent = 
-                    this.videoFeatures?.edge_intensity?.toFixed(4) || '-';
-                this.elements.featureDisplays['color_histogram'].textContent = 
-                    this.videoFeatures?.color_histogram?.toFixed(4) || '-';
-                this.elements.featureDisplays['spectral_entropy'].textContent = 
-                    this.videoFeatures?.spectral_entropy?.toFixed(4) || '-';
-                this.elements.featureDisplays['audio_intensity'].textContent = 
-                    this.videoFeatures?.audio_intensity?.toFixed(4) || '-';
+                this.elements.featureDisplays['edge_intensity'].textContent = this.videoFeatures?.edge_intensity?.toFixed(4) || '-';
+                this.elements.featureDisplays['color_histogram'].textContent = this.videoFeatures?.color_histogram?.toFixed(4) || '-';
+                this.elements.featureDisplays['spectral_entropy'].textContent = this.videoFeatures?.spectral_entropy?.toFixed(4) || '-';
+                this.elements.featureDisplays['audio_intensity'].textContent = this.videoFeatures?.audio_intensity?.toFixed(4) || '-';
             }
 
             updateFeatures() {
                 this.updateFeatureDisplay();
-                const allReady = this.videoFile && this.videoFeatures;
-                this.elements.predictBtn.disabled = !allReady;
+                this.elements.predictBtn.disabled = !(this.videoFile && this.videoFeatures);
             }
 
             async predict() {
